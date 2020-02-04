@@ -27,7 +27,7 @@ use Thelia\Tools\URL;
 
 class ProcessAndInvoiceController extends BaseAdminController
 {
-    public function returnHTMLInvoice($order_id, $fileName) {
+    protected function returnHTMLInvoice($order_id, $fileName) {
         $html = $this->renderRaw(
             $fileName,
             array(
@@ -39,7 +39,20 @@ class ProcessAndInvoiceController extends BaseAdminController
         return $html;
     }
 
-    public function getOrderTurnover(Order $order) {
+    protected function returnHTMLReport($fileName, $totalTurnover, $totalOrders) {
+        $html = $this->renderRaw(
+            $fileName,
+            array(
+                'total_turnover' => $totalTurnover,
+                'total_orders' => $totalOrders
+            ),
+            $this->getTemplateHelper()->getActivePdfTemplate()
+        );
+
+        return $html;
+    }
+
+    protected function getOrderTurnover(Order $order) {
         $orderProducts = OrderProductQuery::create()
             ->filterByOrder($order)
             ->find()
@@ -54,6 +67,7 @@ class ProcessAndInvoiceController extends BaseAdminController
             }
         }
 
+        $turnover += $order->getPostage() + $order->getPostageTax() - $order->getDiscount();
         return $turnover;
     }
 
@@ -68,101 +82,16 @@ class ProcessAndInvoiceController extends BaseAdminController
 
         $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
 
-        $rapport = '
-        <style>
-            .align-center {text-align: center;}
-            .table-border {border: solid 1px #3a3b3c; text-align: center; vertical-align: center; height: auto;}
-            table {border-collapse: collapse; width: 100%;}
-            p {padding: 3px; margin: 3px; text-align: center; vertical-align: center;}
-        </style>
-        <page>
-            <h1 class="align-center">Rapport</h1>';
-
-        $rapport .= '
-        <div>
-            <table>
-            <col style="width: 10%; padding: 1mm; " />
-            <col style="width: 20%; padding: 1mm; " />
-            <col style="width: 20%; padding: 1mm; " />
-            <col style="width: 25%; padding: 1mm; " />
-            <col style="width: 15%; padding: 1mm; " />
-            <col style="width: 10%; padding: 1mm; text-align: right;" />
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Référence</th>
-                        <th>Date et heure</th>
-                        <th>Entreprise</th>
-                        <th>Nom du client</th>
-                        <th>Montant</th>
-                    </tr>
-                </thead>
-                <tbody>    
-        ';
-
         $totalTurnover = 0;
         foreach ($orders as $order) {
             $htmlInvoice = $this->returnHTMLInvoice($order->getId(), ConfigQuery::read('pdf_invoice_file', 'invoice'));
             $htmltopdf->writeHTML($htmlInvoice);
 
-            $customer = $order->getCustomer();
-            $invoiceAddress = OrderAddressQuery::create()->findOneById($order->getInvoiceOrderAddressId());
-
-            $orderId = $order->getId();
-            $orderRef = $order->getRef();
-            $orderDate = $order->getCreatedAt()->format('d/m/Y H:i:s');
-            $orderCompany = $invoiceAddress->getCompany();
-            $orderCustomer = $customer->getFirstname() . ' ' . $customer->getLastname();
-            $orderTurnover = $this->getOrderTurnover($order) - $order->getDiscount();
-
-            $rapport .= "
-            <tr>
-                <td>$orderId</td>
-                <td>$orderRef</td>
-                <td>$orderDate</td>
-                <td>$orderCompany</td>
-                <td>$orderCustomer</td>
-                <td>$orderTurnover</td>
-            </tr>
-            ";
-
-            $totalTurnover += $orderTurnover;
+            $totalTurnover += $this->getOrderTurnover($order);
         }
 
-        $rapport .= '
-                </tbody>
-            </table>
-        </div>
-        ';
 
-        $totalInvoices = count($orders);
-
-        $rapport .= '
-        <br><br>
-        <div>
-            <table>
-            <col style="width: 30%; padding: 1mm; " />
-            <col style="width: 20%; padding: 1mm; " />
-                <thead>
-                    <tr>
-                        <th class="table-border ca" valign="middle">TOTAL CA</th>
-                        <th class="table-border commandes" valign="middle">Commandes traitées</th>
-                    </tr>
-                </thead>
-                <tbody>    
-        ';
-
-        $rapport .= "
-                    <tr>
-                        <td class=\"table-border ca\" valign=\"middle\">$totalTurnover</td>
-                        <td class=\"table-border commandes\" valign=\"middle\">$totalInvoices</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </page>
-            ";
-
+        $rapport = $this->returnHTMLReport('InvoicesReport', $totalTurnover, count($orders));
         $htmltopdf->writeHTML($rapport);
 
         $fileName = 'ordersInvoice_' . (new \DateTime())->format("Y-m-d_H-i-s") . '.pdf';
