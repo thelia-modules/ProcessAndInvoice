@@ -80,25 +80,28 @@ class ProcessAndInvoiceController extends BaseAdminController
             ->find()
             ;
 
-        $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
+        if ($orders->count() > 0) {
+            $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
 
-        $totalTurnover = 0;
-        foreach ($orders as $order) {
-            $htmlInvoice = $this->returnHTMLInvoice($order->getId(), ConfigQuery::read('pdf_invoice_file', 'invoice'));
-            $htmltopdf->writeHTML($htmlInvoice);
+            $totalTurnover = 0;
+            foreach ($orders as $order) {
+                $htmlInvoice = $this->returnHTMLInvoice($order->getId(), ConfigQuery::read('pdf_invoice_file', 'invoice'));
+                $htmltopdf->writeHTML($htmlInvoice);
 
-            $totalTurnover += $this->getOrderTurnover($order);
-        }
+                $totalTurnover += $this->getOrderTurnover($order);
+            }
 
 
-        $rapport = $this->returnHTMLReport('InvoicesReport', $totalTurnover, count($orders));
-        $htmltopdf->writeHTML($rapport);
+            $rapport = $this->returnHTMLReport('InvoicesReport', $totalTurnover, count($orders));
+            $htmltopdf->writeHTML($rapport);
 
-        $fileName = 'ordersInvoice_' . (new \DateTime())->format("Y-m-d_H-i-s") . '.pdf';
-        $htmltopdf->output($fileName, 'D');
+            $fileName = 'ordersInvoice_' . (new \DateTime())->format("Y-m-d_H-i-s") . '.pdf';
+            $htmltopdf->output($fileName, 'D');
 
-        foreach ($orders as $order) {
-            $order->setOrderStatus($processingStatus)->save();
+            foreach ($orders as $order) {
+                $order->setOrderStatus($processingStatus)->save();
+            }
+
         }
 
         return $this->generateRedirectFromRoute('admin.order.list');
