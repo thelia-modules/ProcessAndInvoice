@@ -16,7 +16,7 @@ of all these orders, then put them in the status 'processing' instead.
 Add it in your main Thelia composer.json file
 
 ```
-composer require thelia/process-and-invoice-module:~1.0
+composer require thelia/process-and-invoice-module:~1.1.0
 ```
 
 ###2.3.X

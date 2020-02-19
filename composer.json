@@ -3,7 +3,8 @@
   "license": "LGPL-3.0-or-later",
   "type": "thelia-module",
   "require": {
-    "thelia/installer": "~1.1"
+    "thelia/installer": "~1.1",
+    "daltcore/lara-pdf-merger": "~2.0.3"
   },
   "extra": {
     "installer-name": "ProcessAndInvoice"

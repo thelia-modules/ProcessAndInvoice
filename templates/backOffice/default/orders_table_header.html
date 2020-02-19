@@ -1,19 +1,16 @@
 <style>
-
     .modal-lg {
         width: 900px;
     }
-    .decal{
+    .decal {
         float : right;
         margin-left: 5px;
     }
 </style>
-<a href="{url path="/admin/module/processandinvoice"}">
-<button type="button" class="btn btn-default btn-primary btn-sm decal" >
+
+<button type="button" class="btn btn-default btn-primary btn-sm decal" id="btn-print-invoices">
     <span class="glyphicon glyphicon-print"></span>
-    {intl l="Process paid orders"}
+    <span id="initial-text">{intl l="Process paid orders"}</span>
+    <span id="progress-text"></span>
 </button>
-</a>
-
-
 
