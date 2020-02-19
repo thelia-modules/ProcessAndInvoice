@@ -4,14 +4,21 @@
 namespace ProcessAndInvoice\Controller;
 
 
+use Front\Front;
+use LynX39\LaraPdfMerger\Facades\PdfMerger;
+use LynX39\LaraPdfMerger\PdfManage;
+use ProcessAndInvoice\ProcessAndInvoice;
 use Spipu\Html2Pdf\Html2Pdf;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Thelia\Controller\Admin\BaseAdminController;
 use Thelia\Core\Event\PdfEvent;
 use Thelia\Core\Event\TheliaEvents;
+use Thelia\Core\HttpFoundation\JsonResponse;
 use Thelia\Exception\TheliaProcessException;
 use Thelia\Log\Tlog;
 use Thelia\Model\ConfigQuery;
@@ -23,15 +30,17 @@ use Thelia\Model\OrderProductTax;
 use Thelia\Model\OrderProductTaxQuery;
 use Thelia\Model\OrderQuery;
 use Thelia\Model\OrderStatusQuery;
+use Thelia\Tools\FileDownload\FileDownloader;
 use Thelia\Tools\URL;
 
 class ProcessAndInvoiceController extends BaseAdminController
 {
-    protected function returnHTMLInvoice($order_id, $fileName) {
+    protected function returnHTMLInvoice($order_id, $fileName, $page) {
         $html = $this->renderRaw(
             $fileName,
             array(
-                'order_id' => $order_id
+                'order_id' => $order_id,
+                'actual_pg' => $page,
             ),
             $this->getTemplateHelper()->getActivePdfTemplate()
         );
@@ -57,53 +66,184 @@ class ProcessAndInvoiceController extends BaseAdminController
             ->filterByOrder($order)
             ->find()
         ;
-        $turnover = 0;
 
+        $turnover = 0;
         foreach ($orderProducts as $orderProduct) {
-            if ($orderProduct->getWasInPromo()) {
-                $turnover += $orderProduct->getQuantity() * ($orderProduct->getPromoPrice() + OrderProductTaxQuery::create()->findOneByOrderProductId($orderProduct->getId())->getPromoAmount());
-            } else {
-                $turnover += $orderProduct->getQuantity() * ($orderProduct->getPrice() + OrderProductTaxQuery::create()->findOneByOrderProductId($orderProduct->getId())->getAmount());
+            if (null !== $orderTax = OrderProductTaxQuery::create()->findOneByOrderProductId($orderProduct->getId())) {
+                if ($orderProduct->getWasInPromo()) {
+                    //$turnover += (float)bcmul($orderProduct->getQuantity(), bcadd($orderProduct->getPromoPrice(), $orderTax->getPromoAmount()));
+                    $turnover += $orderProduct->getQuantity() * ($orderProduct->getPromoPrice() + $orderTax->getPromoAmount());
+                } else {
+                    //$turnover += (float)bcmul($orderProduct->getQuantity(), bcadd($orderProduct->getPrice(), $orderTax->getAmount()));
+                    $turnover += $orderProduct->getQuantity() * ($orderProduct->getPrice() + $orderTax->getAmount());
+                }
             }
         }
 
+        //$turnover += (float)bcsub(bcadd($order->getPostage(), $order->getPostageTax()), $order->getDiscount());
         $turnover += $order->getPostage() + $order->getPostageTax() - $order->getDiscount();
         return $turnover;
     }
 
-    public function processAndInvoice() {
+    /**
+     * Delete all files from the sever
+     */
+    public function cleanFiles() {
+        $finder = new Finder();
+        $finder->files()->in(THELIA_WEB_DIR . 'invoices');
+
+        foreach ($finder as $file) {
+            @unlink($file);
+        }
+    }
+
+    /***
+     * Generate the report file
+     *
+     * @throws \Propel\Runtime\Exception\PropelException
+     * @throws \Spipu\Html2Pdf\Exception\Html2PdfException
+     */
+    public function createReport() {
+        $errorMessage = null;
+
+        $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
+
         $paidStatus = OrderStatusQuery::create()->findOneByCode('paid');
         $processingStatus = OrderStatusQuery::create()->findOneByCode('processing');
 
         $orders = OrderQuery::create()
             ->filterByOrderStatus($paidStatus)
             ->find()
-            ;
+        ;
+
+        $totalTurnover = 0;
+        foreach ($orders as $order) {
+            $totalTurnover += $this->getOrderTurnover($order);
+        }
+
+        $rapport = $this->returnHTMLReport('InvoicesReport', round($totalTurnover, 2), count($orders));
+        $htmltopdf->writeHTML($rapport);
+
+        /** Sets all @var Order $order to processing status */
+        foreach ($orders as $order) {
+            $order->setOrderStatus($processingStatus)->save();
+        }
+
+        $fileName = THELIA_WEB_DIR . 'invoices/' . 'report.pdf';
+        $htmltopdf->output($fileName, 'F');
+
+        return new JsonResponse([
+            "success" => $errorMessage ? false : true,
+            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+                'Report file correctly generated',
+                [],
+                ProcessAndInvoice::DOMAIN_NAME
+            ),
+        ], $errorMessage ? 500 : 200);
+    }
+
+    /**
+     * Merge the different invoices PDF in a single file, as well as the report
+     *
+     * @return JsonResponse
+     * @throws \Exception
+     */
+    public function mergeInvoices() {
+        $errorMessage = null;
+
+        $finder = new Finder();
+        $finder->files()->in(THELIA_WEB_DIR . 'invoices');
+
+        $mergedPdf = new PdfManage();
+        $mergedPdf->init();
+
+        $reportFileName = THELIA_WEB_DIR . 'invoices/' . 'report.pdf';
+
+        foreach ($finder as $invoiceFile) {
+            if ($reportFileName !== $fileName = THELIA_WEB_DIR . 'invoices/' . $invoiceFile->getRelativePathname()) {
+                try {
+                    $mergedPdf->addPDF($fileName);
+                } catch (\Exception $e) {
+                    $error = $e->getMessage();
+                }
+            }
+        }
+
+        $mergedPdf->addPDF($reportFileName);
+        $mergedFileName = 'invoices/' . 'ordersInvoice_' . (new \DateTime())->format("Y-m-d_H-i-s") . '.pdf';
+
+        try {
+            $mergedPdf->merge();
+            $mergedPdf->save(THELIA_WEB_DIR . $mergedFileName, 'file');
+        } catch (\Exception $e) {
+            $error = $e->getMessage();
+        }
+
+        return new JsonResponse([
+            "success" => $errorMessage ? false : true,
+            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+                'Merging finished',
+                [],
+                ProcessAndInvoice::DOMAIN_NAME
+            ),
+            "link" => 'http://' . $_SERVER["SERVER_NAME"] . DS . $mergedFileName,
+        ], $errorMessage ? 500 : 200);
+    }
+
+    /**
+     * Create the invoices for paid orders, 10 at a time
+     *
+     * @return Response|JsonResponse
+     * @throws \Propel\Runtime\Exception\PropelException
+     * @throws \Spipu\Html2Pdf\Exception\Html2PdfException
+     */
+    public function processAndInvoice() {
+        /** Don't change construct : warning will kill the ajax response */
+        if (!is_dir($concurrentDirectory = THELIA_WEB_DIR . 'invoices')) {
+            mkdir($concurrentDirectory);
+        }
+
+        /** Make sure method was called by AJAX */
+        if(!$this->getRequest()->isXmlHttpRequest()) {
+            return $this->generateRedirectFromRoute('admin.order.list');
+        }
+
+        $errorMessage = null;
+        $request = $this->getRequest()->request;
+
+        $turn = (int)$request->get('turn');
+        $offset = 10 * $turn;
+
+        $paidStatus = OrderStatusQuery::create()->findOneByCode('paid');
+
+        $orders = OrderQuery::create()
+            ->filterByOrderStatus($paidStatus)
+            ->offset($offset)
+            ->limit(10)
+            ->find()
+        ;
 
         if ($orders->count() > 0) {
             $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
 
-            $totalTurnover = 0;
+            $page = $offset;
             foreach ($orders as $order) {
-                $htmlInvoice = $this->returnHTMLInvoice($order->getId(), ConfigQuery::read('pdf_invoice_file', 'invoice'));
+                ++$page;
+                $htmlInvoice = $this->returnHTMLInvoice($order->getId(), 'massInvoice', $page);
                 $htmltopdf->writeHTML($htmlInvoice);
-
-                $totalTurnover += $this->getOrderTurnover($order);
             }
-
-
-            $rapport = $this->returnHTMLReport('InvoicesReport', $totalTurnover, count($orders));
-            $htmltopdf->writeHTML($rapport);
-
-            $fileName = 'ordersInvoice_' . (new \DateTime())->format("Y-m-d_H-i-s") . '.pdf';
-            $htmltopdf->output($fileName, 'D');
-
-            foreach ($orders as $order) {
-                $order->setOrderStatus($processingStatus)->save();
-            }
-
+            $fileName = THELIA_WEB_DIR . 'invoices/' . 'ordersInvoice_' . $turn . '.pdf';
+            $htmltopdf->output($fileName, 'F');
         }
 
-        return $this->generateRedirectFromRoute('admin.order.list');
+        /** JsonResponse for the AJAX call */
+        return new JsonResponse([
+            "success" => $errorMessage ? false : true,
+            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+                "Part $turn of invoice : Done",
+                [],
+                ProcessAndInvoice::DOMAIN_NAME
+            )
+        ], $errorMessage ? 500 : 200);
     }
 }

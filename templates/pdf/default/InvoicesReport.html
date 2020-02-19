@@ -68,7 +68,7 @@
                 {loop type="customer" name="customer" id={$CUSTOMER} backend_context=1 current="false"}
                 <td>{$FIRSTNAME} {$LASTNAME}</td>
                 {/loop}
-                <td>{$TOTAL_TAXED_AMOUNT}</td>
+                <td>{$TOTAL_TAXED_AMOUNT|string_format:"%.2f"}</td>
             </tr>
             {/loop}
             </tbody>

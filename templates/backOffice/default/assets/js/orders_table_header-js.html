@@ -1,0 +1,91 @@
+{loop type="order" name="order-loop" status_code="paid" customer="*"}
+    {assign var="order_nbr" value={$LOOP_TOTAL}}
+{/loop}
+<script>
+    $('body').on('click', '#btn-print-invoices', function(event){
+
+        $('#btn-print-invoices').attr("disabled", true);
+        $('#initial-text').hide();
+        $('#progress-text').show().html('0% Complete');
+
+        let x = 0;
+        let y = {$order_nbr};
+        y = Math.ceil(y/10);
+
+        processInvoices(x, y);
+    });
+
+    function cleanFiles() {
+        $.ajax({
+            url: "{url path='/admin/module/processandinvoice/clean'}",
+            method: 'POST',
+            async: true,
+            complete: function (response) {
+                $('#btn-print-invoices').attr("disabled", false);
+                $('#initial-text').show();
+                $('#progress-text').hide();
+            }
+        });
+    }
+
+    function mergeFiles() {
+        $('#progress-text').html('99% Complete');
+
+        $.ajax({
+            url: "{url path='/admin/module/processandinvoice/merge'}",
+            method: 'POST',
+            async: true,
+            success: function (response) {
+                $('#progress-text').html('100% Complete');
+                downloadUrl = response.link;
+                var link=document.createElement('a');
+                link.href = downloadUrl;
+                link.download = downloadUrl.substr(downloadUrl.lastIndexOf('/') + 1);
+                link.click();
+                cleanFiles();
+            },
+            error: function (response) {
+                console.log('Error :');
+                console.log(response.message);
+            }
+        });
+    }
+
+    function processInvoices(x, y) {
+        if (x < y) {
+            $('#progress-text').html(Math.ceil((x/(y+1))*100) + '% Complete');
+            $.ajax({
+                url: "{url path='/admin/module/processandinvoice'}",
+                data: {
+                    turn: x,
+                },
+                dataType: 'json',
+                method: 'POST',
+                async: true,
+                success: function (response) {
+                    x++;
+                    console.log(response.message);
+                    processInvoices(x, y);
+                },
+                error: function (response) {
+                  console.log('Error :');
+                  console.log(response.message);
+                }
+            });
+        } else {
+            $('#progress-text').html(Math.ceil((x/(y+1))*100) + '% Complete');
+            $.ajax({
+                url: "{url path='/admin/module/processandinvoice/report'}",
+                method: 'POST',
+                async: true,
+                success: function (response) {
+                    mergeFiles();
+                },
+                error: function (response) {
+                    console.log('Error :');
+                    console.log(response.message);
+                }
+            });
+        }
+    }
+</script>

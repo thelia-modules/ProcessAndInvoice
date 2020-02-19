@@ -8,4 +8,15 @@
         <default key="_controller">ProcessAndInvoice\Controller\ProcessAndInvoiceController::processAndInvoice</default>
     </route>
 
+    <route id="process_and_invoice-merge" path="/admin/module/processandinvoice/merge">
+        <default key="_controller">ProcessAndInvoice\Controller\ProcessAndInvoiceController::mergeInvoices</default>
+    </route>
+
+    <route id="process_and_invoice-report" path="/admin/module/processandinvoice/report">
+        <default key="_controller">ProcessAndInvoice\Controller\ProcessAndInvoiceController::createReport</default>
+    </route>
+
+    <route id="process_and_invoice-clean" path="/admin/module/processandinvoice/clean">
+        <default key="_controller">ProcessAndInvoice\Controller\ProcessAndInvoiceController::cleanFiles</default>
+    </route>
 </routes>

@@ -1,0 +1,465 @@
+{*************************************************************************************/
+/*      This file is part of the Thelia package.                                     */
+/*                                                                                   */
+/*      Copyright (c) OpenStudio                                                     */
+/*      email : dev@thelia.net                                                       */
+/*      web : http://www.thelia.net                                                  */
+/*                                                                                   */
+/*      For the full copyright and license information, please view the LICENSE.txt  */
+/*      file that was distributed with this source code.                             */
+/*************************************************************************************}
+
+{* Set the default translation domain, that will be used by {intl} when the 'd' parameter is not set *}
+{default_translation_domain domain='pdf.classicride'}
+{literal}
+<style>
+    body{
+        color:#000;
+    }
+    h1, h2, h3, h4 {
+        margin: .2em 0;
+    }
+
+    h1 {
+        font-size: 48px;
+    }
+
+    h2 {
+        font-size: 16px;
+    }
+
+    h3 {
+        font-size: 14px;
+    }
+
+    h4 {
+        font-size: 12px;
+    }
+
+    p, td {
+        color:#000;
+        font-size: 14px;
+    }
+
+    p {
+        margin: 0;
+        padding: 0;
+    }
+
+    span {
+        font-size: 9px;
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    tr {
+        width: 100%;
+    }
+
+    td {
+        vertical-align: top;
+    }
+
+    .table-info h3 {
+        margin-top: 0;
+        margin-bottom: 2px;
+    }
+
+    .table-1 td {
+        background: #fff;
+        border:solid 1px #bcbdc0;
+        color: #000;
+    }
+    .table1 td h4{
+        color:#000;
+    }
+
+    .table-2 td {
+        border:solid 1px #bcbdc0;
+        background:#fff;
+        color: #000;
+    }
+    .table-2 td p {
+        color: #000;
+    }
+
+    .table-3 h3 {
+        margin: 2mm 0;
+    }
+
+    .table-3-1, .table-3-2 {
+        border: solid 1px #bcbdc0;
+    }
+    .table-3-1 p {
+        font-size: 10px;
+        color: #000;
+        margin: 0;
+        padding: 0;
+    }
+    .table-3-2 p {
+        font-size: 9px;
+        color: #747475;
+        margin: 0;
+        padding: 0;
+    }
+
+    .table-3-module h3 {
+        margin: 3mm 0 0;
+    }
+
+    .table-3-module span {
+        font-size: 11px;
+    }
+    .table-3 td{
+        background:#fff;
+        color:#000;
+        height: 5px;
+    }
+
+    .table-4 {
+        border: solid 1px #bcbdc0;
+    }
+
+    .table-4 h3 {
+        text-align: center;
+    }
+
+    .table-4 td{
+        background:#fff;
+        color:#000;
+        height: 5px;
+    }
+
+    .table-4 p {
+        font-size: 13px;
+        color: #000;
+        margin: 1px;
+        padding: 1px;
+    }
+
+    .align-left {
+        text-align: left;
+    }
+    .align-center {
+        text-align: center;
+    }
+    .align-right{
+        text-align: right;
+    }
+
+    .clear {
+        padding: 0.5%;
+        border-bottom:solid 1px #dddddd;
+    }
+
+    .clear-none {
+        padding: 0.5%;
+    }
+
+</style>
+{/literal}
+
+{loop type="order" name="total_pg_loop" status_code="paid" customer="*" backend_context="1"}
+    {assign var="total_pg" value={$LOOP_TOTAL}}
+{/loop}
+{loop name="order.invoice" type="order" id=$order_id customer="*"}
+<page backtop="2mm" backleft="4mm" backright="4mm" backbottom="2mm">
+    <page_header>
+    </page_header>
+
+    <page_footer>
+        <table>
+            <col style="width: 80%; padding: 1mm; border: none; text-align: left;" />
+            <col style="width: 20%; padding: 1mm; border: none; text-align: right;" />
+            <tbody>
+            <tr>
+                <td>
+                    <!-- Imprint -->
+                    {config key="store_name"}
+                    {$addresses="{config key="store_address1"} {config key="store_address2"} {config key="store_address3"}"}
+                    {$city="{config key="store_zipcode"} {config key="store_city"}"}
+                    {if $addresses != "  "}- {$addresses}{/if}
+                    {if $city != " " }- {$city}{/if}
+                    {if {config key="store_country"} }
+                        {loop type="country" name="address.country.title" id={config key="store_country"}} - {$TITLE}{/loop}
+                    {/if}
+                    {if {config key="store_business_id"} }
+                        - {config key="store_business_id"}
+                    {/if}
+                    <br>
+                    {if {config key="store_phone"} }
+                        {intl l="Phone: "}{config key="store_phone"}
+                    {/if}
+                    {if {config key="store_email"} }
+                        {intl l="Email: "}{config key="store_email"}
+                    {/if}
+
+                </td>
+                <!-- <td>{intl l="page"} {$actual_pg}/{$total_pg}</td> !-->
+            </tr>
+            </tbody>
+        </table>
+    </page_footer>
+
+    {$taxes = []}
+    {loop name="currency.order" type="currency" id=$CURRENCY}
+    {assign "orderCurrency" $SYMBOL}
+    {/loop}
+    <table class="table-info" style="margin-bottom: 15px;">
+        <tr>
+            <td style="width:50%;text-align:left;">
+                <p style="font-size: 14px; font-weight: bold;">{intl l="CLASSICRIDE"}</p>
+            </td>
+            <td style="width:50%;text-align:right;">
+                <p style="font-size: 14px; font-weight: bold;">{intl l="INVOICE"}</p>
+            </td>
+        </tr>
+    </table>
+
+    <p style="font-size: 14px;">
+        <b>{intl l="Invoice date"} : {format_date date=$INVOICE_DATE format="d/m/Y"}</b><br />
+        <b>{intl l="Invoice REF"} : {$INVOICE_REF}</b><br />
+        <b>{intl l="Ref de commande"} : {$REF}</b><br />
+        <b>{intl l="Customer Number"} : {loop type="customer" name="customer.invoice" id=$CUSTOMER current="0"}{$REF}{/loop}</b>
+        <br /><br />
+    </p>
+
+
+    <table class="table-address">
+        <col style="width: 50%" />
+        <tr>
+            <td style="border-left: solid 1mm #000;" >
+                <p style="font-size: 14px;">
+                    <b>{intl l="Delivery address"}</b><br/><br/>
+                    {loop type="order_address" name="delivery_address" id=$DELIVERY_ADDRESS}
+                        {$hideTax = $COUNTRY == 168}
+                        {if $COMPANY}{$COMPANY}<br />{/if}
+                        {loop type="title" name="order-invoice-address-title" id=$TITLE}{$LONG}{/loop} {$FIRSTNAME} {$LASTNAME}<br />
+                        {$ADDRESS1} {$ADDRESS2} {$ADDRESS3}<br />
+                        {$ZIPCODE} {$CITY}<br/>
+                        {loop type="country" name="country_delivery" id=$COUNTRY}{$TITLE}{/loop}
+                    {/loop}
+                </p>
+            </td>
+            <td style="border-left: solid 1mm #000;">
+                <p style="font-size: 14px;"><b>{intl l="Invoice address"}</b><br/><br/>
+                    {loop type="order_address" name="invoice_address" id=$INVOICE_ADDRESS}
+                        {if $COMPANY}{$COMPANY}<br />{/if}
+                        {loop type="title" name="order-invoice-address-title" id=$TITLE}{$LONG}{/loop} {$FIRSTNAME} {$LASTNAME}<br />
+                        {$ADDRESS1} {$ADDRESS2} {$ADDRESS3}<br />
+                        {$ZIPCODE} {$CITY}<br/>
+                        {loop type="country" name="country_delivery" id=$COUNTRY}{$TITLE}{/loop}
+                    {/loop}
+                </p>
+            </td>
+        </tr>
+    </table>
+
+    <table cellspacing="0" cellpadding="0" style="padding-top: 2mm;">
+        <col style="width: 40%; padding: 0 1mm;" />
+        <col style="width: 12%; padding: 0 1mm;" />
+        <col style="width: 12%; padding: 0 1mm;" />
+        <col style="width: 12%; padding: 0 1mm;" />
+        <col style="width: 12%; padding: 0 1mm;" />
+        <col style="width: 12%; padding: 0 1mm;" />
+
+        <tr class="table-1">
+            <td><h4>{intl l="Product"}</h4></td>
+            <td><h4 class="align-center">{intl l="Unit. price"}</h4></td>
+            {if $hideTax}
+                {* Display nothing*}
+            {else}
+                <td><h4 class="align-center">{intl l="Tax"}</h4></td>
+                <td><h4 class="align-center">{intl l="Unit taxed price"}</h4></td>
+            {/if}
+
+            <td><h4 class="align-center">{intl l="Quantity"}</h4></td>
+
+            {if $hideTax}
+                <td colspan="3"><h4 class="align-center">{intl l="Total"}</h4></td>
+            {else}
+                <td><h4 class="align-center">{intl l="Taxed total"}</h4></td>
+            {/if}
+        </tr>
+        {loop type="order_product" name="order-products" order=$ID}
+
+            {order_product_stock_infos orderProductId=$ID}
+            {$stockRef = {$order_product_stock_infos->getRef()}}
+            {$stockQ2 = {$order_product_stock_infos->getQ2()}}
+
+            {order_pse_delivery_info order_product_id=$ID}
+            {if $WAS_IN_PROMO == 1}
+                {assign "realPrice" $PROMO_PRICE}
+                {assign "realTax" $PROMO_PRICE_TAX}
+                {assign "realTaxedPrice" $TAXED_PROMO_PRICE}
+            {else}
+                {assign "realPrice" $PRICE}
+                {assign "realTax" $PRICE_TAX}
+                {assign "realTaxedPrice" $TAXED_PRICE}
+            {/if}
+
+            {$taxes[{$TAX_RULE_TITLE}][] = {$realTax|intval} * $QUANTITY}
+
+            <tr class="table-2">
+                <td>
+                    
+                    <p style="margin-bottom:0;">{$TITLE}</p>
+                    {ifloop rel="combinations"}
+                    {loop type="order_product_attribute_combination" name="combinations" order_product=$ID}
+                        <small>- {$ATTRIBUTE_AVAILABILITY_TITLE}</small><br><br>
+                    {/loop}
+                    {/ifloop}
+                    Ref: {$REF}{if $stockQ2} - {$stockQ2}{/if}{if $stockRef} - {$stockRef}{/if} <br>
+                    
+                    {strip}
+                        {if $pse_delivery_info_tab}
+                        <small>{$pse_delivery_info_tab[$PRODUCT_SALE_ELEMENTS_ID]}</small>
+                        {/if}
+                    {/strip}
+                    <br><br>
+
+                </td>
+                <td valign="middle" align="center">{format_money number=$realPrice symbol=$orderCurrency}</td>
+                {if $hideTax}
+                    {* Display nothing*}
+                {else}
+                    <td valign="middle" align="center">{format_money number=$realTax symbol=$orderCurrency}</td>
+                    <td valign="middle" align="center">{format_money number=$realTaxedPrice symbol=$orderCurrency}</td>
+                {/if}
+                <td valign="middle" align="center">{$QUANTITY}</td>
+                <td valign="middle" align="center">{format_money number={$realTaxedPrice * $QUANTITY} symbol=$orderCurrency}</td>
+            </tr>
+        {/loop}
+    </table>
+
+    <table cellspacing="0" cellpadding="0" style="padding-top: 2mm;">
+        <col style="width: 60%; padding: 1mm;" />
+        <col style="width: 40%; padding: 1mm;" />
+        <tr>
+            <td class="table-3-module">
+                <h3>{intl l="Payment module"}</h3>
+                <p>
+                    <span>{loop name="payment-module" type="module" id=$PAYMENT_MODULE}{$TITLE}{/loop}</span>
+                </p>
+                {ifloop rel='gift_card_amount_spend_order'}
+                    <h3>{intl l="Carte Cadeau"}</h3>
+                    {loop type="gift.card.order.list" name="gift_card_amount_spend_order" order_id=$order_id}
+                    {$currentSpendAmount = $SPEND_AMOUNT}
+                        <p>
+                            {loop type="gift.card.list" name="gift_card_list_invoice" card_id=$GIFTCARD_ID customer=$CUSTOMER expired=true}
+                                {intl l="Montant Carte Cadeau %code : <span %class>%amount</span>" class=$class code=$CODE amount={format_money number=$currentSpendAmount symbol=$currencySymbol} d="theliagiftcard"}
+                            {/loop}
+                        </p>
+                    {/loop}
+                {/ifloop}
+
+                <h3>{intl l="Delivery module"}</h3>
+                <p>
+                    <span>{loop name="delivery-module" type="module" id=$DELIVERY_MODULE}{$TITLE}{/loop}</span>
+                </p>
+
+            </td>
+            <td>
+                <table class="table-3">
+                    <col style="width: 50%; padding: 0 1mm 1mm;">
+                    <col style="width: 50%; padding: 0 1mm 1mm;">
+
+                    {assign "discountTax" 0}
+
+                    {if $DISCOUNT}
+                    <tr>
+                        <td class="table-3-1"><p>{intl l="Discount"}</p></td>
+                        <td class="table-3-1 align-right"><p>{format_money number=$DISCOUNT symbol=$orderCurrency}</p></td>
+                    </tr>
+                    {assign "discountTax" {$DISCOUNT*20/120}}
+                    {/if}
+
+                    {assign "untaxedCart" {$TOTAL_AMOUNT - $POSTAGE + $discountTax}}
+                    {assign "untaxedPostage" {$POSTAGE*100/120}}
+                    {assign "postageTax" {$POSTAGE*20/120}}
+                    {assign "untaxedTotalWithUntaxedPostage" {$untaxedCart + $untaxedPostage}}
+
+                    {* Totaux des frais de livraison : HT / TVA / TTC *}
+                    {if $hideTax}
+                        <tr>
+                            <td class="table-3-1"><p>{intl l="Postage"}</p></td>
+                            <td class="table-3-1 align-right"><p>{format_money number=$POSTAGE symbol=$orderCurrency}</p></td>
+                        </tr>
+                    {else}
+                        <tr>
+                            <td class="table-3-1"><p>{intl l="Postage without tax"}</p></td>
+                            <td class="table-3-1 align-right"><p>{format_money number=$untaxedPostage symbol=$orderCurrency}</p></td>
+                        </tr>
+                        <tr>
+                            <td class="table-3-1"><p>{intl l="Postage tax"}</p></td>
+                            <td class="table-3-1 align-right"><p>{format_money number=$postageTax symbol=$orderCurrency}</p></td>
+                        </tr>
+                        <tr>
+                            <td class="table-3-1"><p>{intl l="Postage with tax"}</p></td>
+                            <td class="table-3-1 align-right"><p>{format_money number=$POSTAGE symbol=$orderCurrency}</p></td>
+                        </tr>
+                    {/if}
+
+                    {* Totaux panier + livraison : HT / TVA / TTC *}
+                    {if $hideTax}
+                        <tr>
+                            <td class="table-3-1">
+                                <p>{intl l="Total"}</p>
+                            </td>
+                            <td class="table-3-1 align-right">
+                                <p>{format_money number=$TOTAL_TAXED_AMOUNT symbol=$orderCurrency}</p>
+                            </td>
+                        </tr>
+                    {else}
+                        <tr>
+                            <td class="table-3-1">
+                                <p>{intl l="Total without tax"}</p>
+                            </td>
+                            <td class="table-3-1 align-right">
+                                <p>{format_money number=$untaxedTotalWithUntaxedPostage symbol=$orderCurrency}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="table-3-1">
+                                <p>{intl l="Total tax"}</p>
+                            </td>
+                            <td class="table-3-1 align-right">
+                                <p>{format_money number={$TOTAL_TAX + $postageTax - $discountTax} symbol=$orderCurrency}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="table-3-1">
+                                <p>{intl l="Total with tax"}</p>
+                            </td>
+                            <td class="table-3-1 align-right">
+                                <p>{format_money number=$TOTAL_TAXED_AMOUNT symbol=$orderCurrency}</p>
+                            </td>
+                        </tr>
+                    {/if}
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <table cellspacing="0" cellpadding="0" style="padding-top: 2mm;">
+        <tr>
+            <td class="table-4">
+                <h3>IMPORTANT</h3>
+            </td>
+        </tr>
+        <tr>
+            <td class="table-4">
+                <div>
+                    {loop type="content" name="important-invoice" title="Texte imprimé sur la facture pdf (important)"}
+                    {$DESCRIPTION nofilter}
+                    {/loop}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+</page>
+{/loop}
