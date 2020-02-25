@@ -5,17 +5,17 @@
     <fullnamespace>ProcessAndInvoice\ProcessAndInvoice</fullnamespace>
     <descriptive locale="en_US">
         <title>Process and Invoice</title>
-        <description>Creates an invoice for all paid orders and change their status to processing</description>
+        <description>Mass invoice generation</description>
     </descriptive>
     <descriptive locale="fr_FR">
         <title>Traitement et Facture</title>
-        <description>Fais une facture pour toutes les commandes au status payé puis change leur status en traitement</description>
+        <description>Génération de factures en masse</description>
     </descriptive>
     <languages>
         <language>en_US</language>
         <language>fr_FR</language>
     </languages>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <authors>
         <author>
             <name>Luc Normandon</name>

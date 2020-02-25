@@ -19,4 +19,16 @@
     <route id="process_and_invoice-clean" path="/admin/module/processandinvoice/clean">
         <default key="_controller">ProcessAndInvoice\Controller\ProcessAndInvoiceController::cleanFiles</default>
     </route>
+
+    <route id="process_and_invoice-download" path="/admin/module/processandinvoice/download">
+        <default key="_controller">ProcessAndInvoice\Controller\ProcessAndInvoiceController::downloadFile</default>
+    </route>
+
+    <route id="process_and_invoice-multi" path="/admin/module/processandinvoice/multi">
+        <default key="_controller">ProcessAndInvoice\Controller\ProcessAndInvoiceController::multiOrderToPdf</default>
+    </route>
+
+    <route id="process_and_invoice-multi-process" path="/admin/module/processandinvoice/multi-process">
+        <default key="_controller">ProcessAndInvoice\Controller\ProcessAndInvoiceController::multiOrderProcess</default>
+    </route>
 </routes>

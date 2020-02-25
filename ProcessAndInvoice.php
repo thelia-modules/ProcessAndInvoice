@@ -12,12 +12,25 @@
 
 namespace ProcessAndInvoice;
 
+use ProcessAndInvoice\Model\PdfInvoiceQuery;
+use Propel\Runtime\Connection\ConnectionInterface;
+use Thelia\Install\Database;
 use Thelia\Module\BaseModule;
 
 class ProcessAndInvoice extends BaseModule
 {
     /** @var string */
     const DOMAIN_NAME = 'processandinvoice';
+
+    public function postActivation(ConnectionInterface $con = null)
+    {
+        try {
+            PdfInvoiceQuery::create()->findOne();
+        } catch (\Exception $e) {
+            $database = new Database($con);
+            $database->insertSql(null, [__DIR__ . "/Config/thelia.sql"]);
+        }
+    }
 
     /*
      * You may now override BaseModuleInterface methods, such as:

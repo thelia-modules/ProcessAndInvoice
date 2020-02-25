@@ -10,7 +10,7 @@
 /*************************************************************************************}
 
 {* Set the default translation domain, that will be used by {intl} when the 'd' parameter is not set *}
-{default_translation_domain domain='pdf.classicride'}
+{default_translation_domain domain='processandinvoice'}
 {literal}
 <style>
     body{
@@ -211,7 +211,7 @@
     <table class="table-info" style="margin-bottom: 15px;">
         <tr>
             <td style="width:50%;text-align:left;">
-                <p style="font-size: 14px; font-weight: bold;">{intl l="CLASSICRIDE"}</p>
+                <p style="font-size: 14px; font-weight: bold;">{config key="store_name"}</p>
             </td>
             <td style="width:50%;text-align:right;">
                 <p style="font-size: 14px; font-weight: bold;">{intl l="INVOICE"}</p>
@@ -219,14 +219,22 @@
         </tr>
     </table>
 
-    <p style="font-size: 14px;">
-        <b>{intl l="Invoice date"} : {format_date date=$INVOICE_DATE format="d/m/Y"}</b><br />
-        <b>{intl l="Invoice REF"} : {$INVOICE_REF}</b><br />
-        <b>{intl l="Ref de commande"} : {$REF}</b><br />
-        <b>{intl l="Customer Number"} : {loop type="customer" name="customer.invoice" id=$CUSTOMER current="0"}{$REF}{/loop}</b>
-        <br /><br />
-    </p>
-
+    <table>
+        <tr>
+            <td style="width: 50%;">
+                <p style="font-size: 14px;">
+                    <b>{intl l="Invoice date"} : {format_date date=$INVOICE_DATE format="d/m/Y"}</b><br />
+                    <b>{intl l="Invoice REF"} : {$INVOICE_REF}</b><br />
+                    <b>{intl l="Ref de commande"} : {$REF}</b><br />
+                    <b>{intl l="Customer Number"} : {loop type="customer" name="customer.invoice" id=$CUSTOMER current="0"}{$REF}{/loop}</b>
+                    <br /><br />
+                </p>
+            </td>
+            <td style="width: 50%;">
+                {barcode id=$order_id}
+            </td>
+        </tr>
+    </table>
 
     <table class="table-address">
         <col style="width: 50%" />
