@@ -452,6 +452,7 @@
         </tr>
     </table>
 
+    {loop type="content" name="important-invoice" title="Texte imprimé sur la facture pdf (important)"}
     <table cellspacing="0" cellpadding="0" style="padding-top: 2mm;">
         <tr>
             <td class="table-4">
@@ -461,13 +462,12 @@
         <tr>
             <td class="table-4">
                 <div>
-                    {loop type="content" name="important-invoice" title="Texte imprimé sur la facture pdf (important)"}
                     {$DESCRIPTION nofilter}
-                    {/loop}
                 </div>
             </td>
         </tr>
     </table>
+    {/loop}
 
 </page>
 {/loop}
