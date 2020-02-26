@@ -262,7 +262,7 @@ class ProcessAndInvoiceController extends BaseAdminController
             $page = $offset;
             foreach ($orders as $order) {
                 ++$page;
-                $htmlInvoice = $this->returnHTMLInvoice($order->getId(), 'massInvoice');
+                $htmlInvoice = $this->returnHTMLInvoice($order->getId(), 'invoice');
                 $htmltopdf->writeHTML($htmlInvoice);
             }
             $fileName = THELIA_LOCAL_DIR . 'invoices/' . 'ordersInvoice_' . $turn . '.pdf';
@@ -307,7 +307,7 @@ class ProcessAndInvoiceController extends BaseAdminController
         $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
 
         while ($offset < $limit && $offset < count($orders)) {
-            $htmlInvoice = $this->returnHTMLInvoice($orders[$offset], 'massInvoice');
+            $htmlInvoice = $this->returnHTMLInvoice($orders[$offset], 'invoice');
             $htmltopdf->writeHTML($htmlInvoice);
 
             $invoiced = PdfInvoiceQuery::create()->filterByOrderId($orders[$offset]);
