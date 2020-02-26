@@ -172,7 +172,7 @@
                 cleanFiles();
             },
             error: function (response) {
-                console.log('Error :');
+                console.log('Error while merging files :');
                 console.log(response.message);
             }
         });
@@ -208,7 +208,7 @@
                     mergeFiles();
                 },
                 error: function (response) {
-                    console.log('Error :');
+                    console.log('Error while generating report file :');
                     console.log(response.message);
                 }
             });
@@ -234,13 +234,15 @@
                     if (response.status === 'success') {
                         multiOrderProcess(response.orderList, response.orderNb, 0);
                     } else {
-                        console.log('error');
+                        console.log('Error while parsing orders : ');
                         console.log(response.message);
                         $('#error-pdf').show();
                         $('#error-pdf-message').html(response.message);
                     }
                 },
                 error: function (response) {
+                    console.log('Error while parsing orders : ');
+                    console.log(response.message);
                 }
             });
         });
@@ -277,6 +279,10 @@
                 success: function(response) {
                     turn++;
                     multiOrderProcess(orderList, totalOrders, turn)
+                },
+                error: function (response) {
+                    console.log('Error while generating files :');
+                    console.log(response.message);
                 }
             });
         } else {
@@ -296,7 +302,7 @@
                     $("#orderListTable").load(window.location.href + " #orderListTable > *");
                 },
                 error: function (response) {
-                    console.log('Error :');
+                    console.log('Error while merging files :');
                     console.log(response.message);
                 }
             });
