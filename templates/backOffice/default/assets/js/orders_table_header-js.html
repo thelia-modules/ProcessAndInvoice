@@ -1,5 +1,5 @@
 <!-- Form for MultiOrderPaidToPdf button -->
-{form name="invoicing.pdf.form"}
+{form name="processandinvoice.invoicing.pdf.form"}
 <form method="post" action="{url path='/admin/module/processandinvoice/multi'}" id="multi-order-pdf" {form_enctype form=$form} >
     {form_hidden_fields form=$form}
     {render_form_field form=$form field="success_url" value={url path='/admin/orders/'}}
@@ -63,7 +63,7 @@
                             <th class="text-center">{intl l="STATUS"}</th>
                         </tr>
 
-                        {loop type="invoice.pdf.order-loop" name="order-list" customer="*" status="2,3,4" limit="100" invoiced="0"}
+                        {loop type="processandinvoice.invoice.pdf.order-loop" name="order-list" customer="*" status="2,3,4" limit="100" invoiced="0"}
                         {loop type="currency" name="order-currency" id=$CURRENCY}
                             {$orderCurrency=$SYMBOL}
                         {/loop}

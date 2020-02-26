@@ -19,7 +19,7 @@
     {intl l="PDF Invoices"}
     <span class="badge">
         {$orderCount = 0}
-        {loop type="invoice.pdf.order-loop" name="order-list" customer="*" status="2,3,4" limit="100" invoiced="0"}
+        {loop type="processandinvoice.invoice.pdf.order-loop" name="order-list" customer="*" status="2,3,4" limit="100" invoiced="0"}
             {if $LOOP_TOTAL >= 100}
                 {$orderCount = "100+"}
             {else}

@@ -5,11 +5,11 @@
         xsi:schemaLocation="http://thelia.net/schema/dic/config http://thelia.net/schema/dic/config/thelia-1.0.xsd">
 
     <forms>
-        <form name="invoicing.pdf.form" class="ProcessAndInvoice\Form\InvoicingForm" />
+        <form name="processandinvoice.invoicing.pdf.form" class="ProcessAndInvoice\Form\InvoicingForm" />
     </forms>
 
     <loops>
-        <loop name="invoice.pdf.order-loop" class="ProcessAndInvoice\Loop\InvoicePdfOrderLoop" />
+        <loop name="processandinvoice.invoice.pdf.order-loop" class="ProcessAndInvoice\Loop\InvoicePdfOrderLoop" />
     </loops>
 
     <hooks>
