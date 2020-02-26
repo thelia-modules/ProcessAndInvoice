@@ -42,11 +42,11 @@ use Thelia\Tools\URL;
 
 class ProcessAndInvoiceController extends BaseAdminController
 {
-    protected function returnHTMLInvoice($order_id, $fileName) {
+    protected function returnHTMLInvoice($orderID, $fileName) {
         $html = $this->renderRaw(
             $fileName,
             array(
-                'order_id' => $order_id
+                'order_id' => $orderID
             ),
             $this->getTemplateHelper()->getActivePdfTemplate()
         );
