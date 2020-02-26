@@ -191,7 +191,7 @@ class ProcessAndInvoiceController extends BaseAdminController
                 try {
                     $mergedPdf->addPDF($fileName);
                 } catch (\Exception $e) {
-                    $error = $e->getMessage();
+                    $errorMessage = $e->getMessage();
                 }
             }
         }
@@ -226,15 +226,22 @@ class ProcessAndInvoiceController extends BaseAdminController
      */
     protected function checkDirectory() {
         $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $dir = new Filesystem();
 
         /** Don't change construct : warnings will kill the ajax response */
-        if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId)) {
-            mkdir($concurrentDirectory);
+        try {
+            if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId)) {
+                $dir->mkdir($concurrentDirectory);
+            }
+
+            if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/merged')) {
+                $dir->mkdir($concurrentDirectory);
+            }
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
 
-        if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/merged')) {
-            mkdir($concurrentDirectory);
-        }
+        return null;
     }
 
     /**
@@ -245,14 +252,13 @@ class ProcessAndInvoiceController extends BaseAdminController
      * @throws \Spipu\Html2Pdf\Exception\Html2PdfException
      */
     public function processAndInvoice() {
-        $this->checkDirectory();
+        $errorMessage = $this->checkDirectory();
 
         /** Make sure method was called by AJAX */
         if(!$this->getRequest()->isXmlHttpRequest()) {
             return $this->generateRedirectFromRoute('admin.order.list');
         }
 
-        $errorMessage = null;
         $request = $this->getRequest()->request;
 
         $turn = (int)$request->get('turn');
@@ -302,9 +308,7 @@ class ProcessAndInvoiceController extends BaseAdminController
      * @throws \Spipu\Html2Pdf\Exception\Html2PdfException
      */
     public function multiOrderProcess() {
-        $errorMessage = null;
-
-        $this->checkDirectory();
+        $errorMessage = $this->checkDirectory();
 
         /** Make sure method was called by AJAX */
         if(!$this->getRequest()->isXmlHttpRequest()) {
@@ -429,6 +433,12 @@ class ProcessAndInvoiceController extends BaseAdminController
         ], 200);
     }
 
+    /**
+     * Set all orders as invoiced in table pdf_invoice
+     *
+     * @return RedirectResponse
+     * @throws \Propel\Runtime\Exception\PropelException
+     */
     public function setAllOrdersInvoiced() {
         $orders = OrderQuery::create()->find();
 
