@@ -9,12 +9,14 @@ use Front\Front;
 use LynX39\LaraPdfMerger\Facades\PdfMerger;
 use LynX39\LaraPdfMerger\PdfManage;
 use ProcessAndInvoice\Form\InvoicingForm;
+use ProcessAndInvoice\Model\PdfInvoice;
 use ProcessAndInvoice\Model\PdfInvoiceQuery;
 use ProcessAndInvoice\ProcessAndInvoice;
 use Spipu\Html2Pdf\Html2Pdf;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -411,5 +413,30 @@ class ProcessAndInvoiceController extends BaseAdminController
             "orderList" => $errorMessage ? null : $orderList,
             "orderNb" => $errorMessage ? null : $x
         ], 200);
+    }
+
+    public function setAllOrdersInvoiced() {
+        $orders = OrderQuery::create()->find();
+
+        foreach ($orders as $order) {
+            $invoiced = PdfInvoiceQuery::create()
+                ->filterById($order->getId())
+                ->findOne()
+                ;
+
+            if (null === $invoiced) {
+                $invoiced = new PdfInvoice();
+            }
+
+            $invoiced->setOrderId($order->getId())
+                ->setInvoiced(1)
+                ->save()
+                ;
+
+        }
+
+        return new RedirectResponse(
+            URL::getInstance()->absoluteUrl("/admin/module/ProcessAndInvoice")
+        );
     }
 }

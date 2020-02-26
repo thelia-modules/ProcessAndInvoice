@@ -16,6 +16,7 @@
         <hook id="processinvoice.hook.back">
             <tag name="hook.event_listener" event="orders.table-header" type="back" templates="render:orders_table_header.html" />
             <tag name="hook.event_listener" event="orders.js" type="back" templates="render:assets/js/orders_table_header-js.html" />
+            <tag name="hook.event_listener" event="module.configuration" type="back" templates="render:module-configuration.html" />
         </hook>
     </hooks>
 
