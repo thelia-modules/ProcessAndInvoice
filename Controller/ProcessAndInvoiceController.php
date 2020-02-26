@@ -20,10 +20,12 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Security\Core\User\User;
 use Thelia\Controller\Admin\BaseAdminController;
 use Thelia\Core\Event\PdfEvent;
 use Thelia\Core\Event\TheliaEvents;
 use Thelia\Core\HttpFoundation\JsonResponse;
+use Thelia\Core\Template\Loop\Auth;
 use Thelia\Exception\TheliaProcessException;
 use Thelia\Log\Tlog;
 use Thelia\Model\ConfigQuery;
@@ -92,7 +94,9 @@ class ProcessAndInvoiceController extends BaseAdminController
     public function cleanFiles() {
         $finder = new Finder();
 
-        $finder->files()->in(THELIA_LOCAL_DIR . 'invoices');
+        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+
+        $finder->files()->in(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId);
 
         foreach ($finder as $file) {
             @unlink($file);
@@ -131,7 +135,8 @@ class ProcessAndInvoiceController extends BaseAdminController
             $order->setOrderStatus($processingStatus)->save();
         }
 
-        $fileName = THELIA_LOCAL_DIR . 'invoices/' . 'report.pdf';
+        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $fileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/report.pdf';
         $htmltopdf->output($fileName, 'F');
 
         return new JsonResponse([
@@ -151,7 +156,8 @@ class ProcessAndInvoiceController extends BaseAdminController
      */
     public function downloadFile() {
         $finder = new Finder();
-        $finder->files()->in(THELIA_LOCAL_DIR . 'invoices/merged');
+        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $finder->files()->in(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/merged');
 
         foreach ($finder as $mergedFile) {
             $pdf = $mergedFile->getContents();
@@ -171,16 +177,17 @@ class ProcessAndInvoiceController extends BaseAdminController
         $errorMessage = null;
 
         $finder = new Finder();
-        $finder->files()->in(THELIA_LOCAL_DIR . 'invoices');
+        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $finder->files()->in(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId);
 
         $mergedPdf = new PdfManage();
         $mergedPdf->init();
 
-        $reportFileName = THELIA_LOCAL_DIR . 'invoices/' . 'report.pdf';
+        $reportFileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/report.pdf';
 
         $finder->sortByName();
         foreach ($finder as $invoiceFile) {
-            if ($reportFileName !== $fileName = THELIA_LOCAL_DIR . 'invoices/' . $invoiceFile->getRelativePathname()) {
+            if ($reportFileName !== $fileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . DS . $invoiceFile->getRelativePathname()) {
                 try {
                     $mergedPdf->addPDF($fileName);
                 } catch (\Exception $e) {
@@ -194,13 +201,13 @@ class ProcessAndInvoiceController extends BaseAdminController
             $mergedPdf->addPDF($reportFileName);
         }
 
-        $mergedFileName = 'invoices/merged/' . 'ordersInvoice_' . (new \DateTime())->format("Y-m-d_H-i-s") . '.pdf';
+        $mergedFileName = 'invoices/' . $currentUserId . '/merged/' . 'ordersInvoice_' . (new \DateTime())->format("Y-m-d_H-i-s") . '.pdf';
 
         try {
             $mergedPdf->merge();
             $mergedPdf->save(THELIA_LOCAL_DIR . $mergedFileName, 'file');
         } catch (\Exception $e) {
-            $error = $e->getMessage();
+            $errorMessage = $e->getMessage();
         }
 
         return new JsonResponse([
@@ -218,12 +225,14 @@ class ProcessAndInvoiceController extends BaseAdminController
      * Check if needed directories exist. Creates them otherwise
      */
     protected function checkDirectory() {
+        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+
         /** Don't change construct : warnings will kill the ajax response */
-        if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices')) {
+        if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId)) {
             mkdir($concurrentDirectory);
         }
 
-        if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/merged')) {
+        if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/merged')) {
             mkdir($concurrentDirectory);
         }
     }
@@ -267,7 +276,10 @@ class ProcessAndInvoiceController extends BaseAdminController
                 $htmlInvoice = $this->returnHTMLInvoice($order->getId(), 'invoice');
                 $htmltopdf->writeHTML($htmlInvoice);
             }
-            $fileName = THELIA_LOCAL_DIR . 'invoices/' . 'ordersInvoice_' . $turn . '.pdf';
+
+            $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+
+            $fileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/ordersInvoice_' . $turn . '.pdf';
             $htmltopdf->output($fileName, 'F');
         }
 
@@ -322,7 +334,9 @@ class ProcessAndInvoiceController extends BaseAdminController
             $offset++;
         }
 
-        $fileName = THELIA_LOCAL_DIR . 'invoices/' . 'ordersInvoice_' . $turn . '.pdf';
+        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+
+        $fileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/ordersInvoice_' . $turn . '.pdf';
         $htmltopdf->output($fileName, 'F');
 
         /** JsonResponse for the AJAX call */
