@@ -137,6 +137,7 @@
         let y = {$order_nbr};
         y = Math.ceil(y/10);
 
+        cleanFiles();
         processInvoices(x, y);
     });
 
@@ -146,9 +147,6 @@
             method: 'POST',
             async: true,
             complete: function (response) {
-                $('#btn-print-invoices').attr("disabled", false);
-                $('#initial-text').show();
-                $('#progress-text').hide();
             }
         });
     }
@@ -169,7 +167,9 @@
                 link.download = downloadUrl;
                 link.click();
 
-                cleanFiles();
+                $('#btn-print-invoices').attr("disabled", false);
+                $('#initial-text').show();
+                $('#progress-text').hide();
             },
             error: function (response) {
                 console.log('Error while merging files :');
@@ -219,6 +219,8 @@
     $(document).ready(function () {
 
         $('#multi-order-pdf').submit(function(event) {
+            cleanFiles();
+
             $('#error-pdf').hide();
             event.preventDefault(); // avoid to execute the actual submit of the form.
 
@@ -298,7 +300,6 @@
                     link.download = downloadUrl;
                     link.click();
 
-                    cleanFiles();
                     $("#orderListTable").load(window.location.href + " #orderListTable > *");
                 },
                 error: function (response) {
