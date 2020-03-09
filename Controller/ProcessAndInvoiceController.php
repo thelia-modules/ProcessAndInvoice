@@ -92,6 +92,8 @@ class ProcessAndInvoiceController extends BaseAdminController
      * Delete all files from the sever
      */
     public function cleanFiles() {
+        $errorMessage = null;
+
         $finder = new Finder();
 
         $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
@@ -101,6 +103,15 @@ class ProcessAndInvoiceController extends BaseAdminController
         foreach ($finder as $file) {
             @unlink($file);
         }
+
+        return new JsonResponse([
+            "status" => $errorMessage ? 'error' : 'success',
+            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+                'Report file correctly generated',
+                [],
+                ProcessAndInvoice::DOMAIN_NAME
+            ),
+        ], $errorMessage ? 500 : 200);
     }
 
     /***

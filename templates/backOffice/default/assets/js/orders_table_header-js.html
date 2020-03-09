@@ -137,16 +137,22 @@
         let y = {$order_nbr};
         y = Math.ceil(y/10);
 
-        cleanFiles();
-        processInvoices(x, y);
+        cleanFiles(x, y);
     });
 
-    function cleanFiles() {
+    function cleanFiles(x, y) {
         $.ajax({
             url: "{url path='/admin/module/processandinvoice/clean'}",
             method: 'POST',
             async: true,
-            complete: function (response) {
+            success: function (response) {
+                if (x !== null && y != null) {
+                    processInvoices(x, y);
+                }
+            },
+            error: function (response) {
+                console.log('Error while cleaning previous files :');
+                console.log(response.message);
             }
         });
     }
@@ -219,7 +225,7 @@
     $(document).ready(function () {
 
         $('#multi-order-pdf').submit(function(event) {
-            cleanFiles();
+            cleanFiles(null, null);
 
             $('#error-pdf').hide();
             event.preventDefault(); // avoid to execute the actual submit of the form.
