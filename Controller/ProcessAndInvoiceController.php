@@ -403,7 +403,13 @@ class ProcessAndInvoiceController extends BaseAdminController
                 $ordersFromDay = OrderQuery::create()->where('`order`.`created_at` LIKE \'' . $date . '\'')->find();
 
                 foreach ($ordersFromDay as $order) {
-                    if (!PdfInvoiceQuery::create()->findOneByOrderId($order->getId()) && in_array($order->getStatusId(), $statusArray)) {
+                    if ($invoiced = PdfInvoiceQuery::create()->findOneByOrderId($order->getId())) {
+                        if (!$invoiced->getInvoiced() && in_array($order->getStatusId(), $statusArray)) {
+                            $orderList[$x] = $order->getId();
+                            $x++;
+                        }
+                    }
+                    if (!$invoiced && in_array($order->getStatusId(), $statusArray)) {
                         $orderList[$x] = $order->getId();
                         $x++;
                     }
