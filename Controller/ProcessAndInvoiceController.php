@@ -98,10 +98,13 @@ class ProcessAndInvoiceController extends BaseAdminController
 
         $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
 
-        $finder->files()->in(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId);
+        if(is_dir(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId)) {
 
-        foreach ($finder as $file) {
-            @unlink($file);
+            $finder->files()->in(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId);
+
+            foreach ($finder as $file) {
+                @unlink($file);
+            }
         }
 
         return new JsonResponse([
