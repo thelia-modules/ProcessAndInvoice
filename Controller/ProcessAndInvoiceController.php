@@ -92,7 +92,7 @@ class ProcessAndInvoiceController extends BaseAdminController
      * Delete all files from the sever
      */
     public function cleanFiles() {
-        $errorMessage = null;
+        $errorMessage = $this->checkDirectory();
 
         $finder = new Finder();
 
@@ -241,6 +241,10 @@ class ProcessAndInvoiceController extends BaseAdminController
 
         /** Don't change construct : warnings will kill the ajax response */
         try {
+            if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/')) {
+                $dir->mkdir($concurrentDirectory);
+            }
+
             if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId)) {
                 $dir->mkdir($concurrentDirectory);
             }
