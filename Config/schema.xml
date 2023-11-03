@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<database defaultIdMethod="native" name="thelia" namespace="ProcessAndInvoice\Model">
+<database defaultIdMethod="native" name="TheliaMain" namespace="ProcessAndInvoice\Model">
 
     <table name="pdf_invoice" namespace="ProcessAndInvoice\Model">
         <column name="id" autoIncrement="true" primaryKey="true" required="true" type="INTEGER" />

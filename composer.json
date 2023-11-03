@@ -4,7 +4,7 @@
   "type": "thelia-module",
   "require": {
     "thelia/installer": "~1.1",
-    "daltcore/lara-pdf-merger": "~2.0.3"
+    "daltcore/lara-pdf-merger": "^2.0"
   },
   "extra": {
     "installer-name": "ProcessAndInvoice"
