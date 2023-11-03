@@ -5,6 +5,7 @@ namespace ProcessAndInvoice\Loop;
 
 
 use Propel\Runtime\ActiveQuery\Criteria;
+use Propel\Runtime\ActiveQuery\ModelCriteria;
 use Thelia\Core\Template\Loop\Argument\Argument;
 use Thelia\Core\Template\Loop\Argument\ArgumentCollection;
 use Thelia\Model\Map\CustomerTableMap;
@@ -30,7 +31,7 @@ use Thelia\Core\Template\Loop\Order;
  */
 class InvoicePdfOrderLoop extends Order
 {
-    public function getArgDefinitions()
+    public function getArgDefinitions(): ArgumentCollection
     {
         return new ArgumentCollection(
             Argument::createIntListTypeArgument('id'),
@@ -80,7 +81,7 @@ class InvoicePdfOrderLoop extends Order
         );
     }
 
-    public function buildModelCriteria()
+    public function buildModelCriteria(): OrderQuery|ModelCriteria|null
     {
         $search = OrderQuery::create();
 
@@ -154,31 +155,31 @@ class InvoicePdfOrderLoop extends Order
         foreach ($orderers as $orderer) {
             switch ($orderer) {
                 case 'id':
-                    $search->orderById(Criteria::ASC);
+                    $search->orderById();
                     break;
                 case 'id-reverse':
                     $search->orderById(Criteria::DESC);
                     break;
                 case 'reference':
-                    $search->orderByRef(Criteria::ASC);
+                    $search->orderByRef();
                     break;
                 case 'reference-reverse':
                     $search->orderByRef(Criteria::DESC);
                     break;
                 case 'create-date':
-                    $search->orderByCreatedAt(Criteria::ASC);
+                    $search->orderByCreatedAt();
                     break;
                 case 'create-date-reverse':
                     $search->orderByCreatedAt(Criteria::DESC);
                     break;
                 case 'invoice-date':
-                    $search->orderByInvoiceDate(Criteria::ASC);
+                    $search->orderByInvoiceDate();
                     break;
                 case 'invoice-date-reverse':
                     $search->orderByInvoiceDate(Criteria::DESC);
                     break;
                 case 'status':
-                    $search->orderByStatusId(Criteria::ASC);
+                    $search->orderByStatusId();
                     break;
                 case 'status-reverse':
                     $search->orderByStatusId(Criteria::DESC);
@@ -187,7 +188,7 @@ class InvoicePdfOrderLoop extends Order
                     $search
                         ->joinOrderAddressRelatedByDeliveryOrderAddressId()
                         ->withColumn(OrderAddressTableMap::COL_COMPANY, 'company')
-                        ->orderBy('company', Criteria::ASC);
+                        ->orderBy('company');
                     break;
                 case 'company-reverse':
                     $search
@@ -200,8 +201,8 @@ class InvoicePdfOrderLoop extends Order
                         ->joinCustomer()
                         ->withColumn(CustomerTableMap::COL_FIRSTNAME, 'firstname')
                         ->withColumn(CustomerTableMap::COL_LASTNAME, 'lastname')
-                        ->orderBy('lastname', Criteria::ASC)
-                        ->orderBy('firstname', Criteria::ASC);
+                        ->orderBy('lastname')
+                        ->orderBy('firstname');
                     break;
                 case 'customer-name-reverse':
                     $search

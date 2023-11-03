@@ -1,6 +1,6 @@
 <!-- Form for MultiOrderPaidToPdf button -->
-{form name="processandinvoice.invoicing.pdf.form"}
-<form method="post" action="{url path='/admin/module/processandinvoice/multi'}" id="multi-order-pdf" {form_enctype form=$form} >
+{form name="processandinvoice_form_invoicing_form"}
+<form method="post" action="{url path='/admin/module/ProcessAndInvoice/multi'}" id="multi-order-pdf" {form_enctype form=$form} >
     {form_hidden_fields form=$form}
     {render_form_field form=$form field="success_url" value={url path='/admin/orders/'}}
 
@@ -142,7 +142,7 @@
 
     function cleanFiles(x, y) {
         $.ajax({
-            url: "{url path='/admin/module/processandinvoice/clean'}",
+            url: "{url path='/admin/module/ProcessAndInvoice/clean'}",
             method: 'POST',
             async: true,
             success: function (response) {
@@ -161,7 +161,7 @@
         $('#progress-text').html('99% Complete');
 
         $.ajax({
-            url: "{url path='/admin/module/processandinvoice/merge'}",
+            url: "{url path='/admin/module/ProcessAndInvoice/merge'}",
             method: 'POST',
             async: true,
             success: function (response) {
@@ -188,7 +188,7 @@
         if (x < y) {
             $('#progress-text').html(Math.ceil((x/(y+1))*100) + '% Complete');
             $.ajax({
-                url: "{url path='/admin/module/processandinvoice'}",
+                url: "{url path='/admin/module/ProcessAndInvoice'}",
                 data: {
                     turn: x,
                 },
@@ -207,7 +207,7 @@
         } else {
             $('#progress-text').html(Math.ceil((x/(y+1))*100) + '% Complete');
             $.ajax({
-                url: "{url path='/admin/module/processandinvoice/report'}",
+                url: "{url path='/admin/module/ProcessAndInvoice/report'}",
                 method: 'POST',
                 async: true,
                 success: function (response) {
@@ -228,7 +228,7 @@
             cleanFiles(null, null);
 
             $('#error-pdf').hide();
-            event.preventDefault(); // avoid to execute the actual submit of the form.
+            event.preventDefault(); // avoid executing the actual submitting of the form.
 
             var form = $('#multi-order-pdf');
             var url = form.attr('action');
@@ -276,7 +276,7 @@
     function multiOrderProcess(orderList, totalOrders, turn) {
         if (turn < Math.ceil(totalOrders/10)) {
             $.ajax({
-                url: "{url path='/admin/module/processandinvoice/multi-process'}",
+                url: "{url path='/admin/module/ProcessAndInvoice/multi-process'}",
                 method: 'POST',
                 data: {
                     orders: orderList,
@@ -295,7 +295,7 @@
             });
         } else {
             $.ajax({
-                url: "{url path='/admin/module/processandinvoice/merge'}",
+                url: "{url path='/admin/module/ProcessAndInvoice/merge'}",
                 method: 'POST',
                 async: true,
                 success: function (response) {

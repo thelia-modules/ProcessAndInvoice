@@ -4,70 +4,71 @@
 namespace ProcessAndInvoice\Controller;
 
 
-use ColissimoLabel\Exception\Exception;
-use Front\Front;
-use LynX39\LaraPdfMerger\Facades\PdfMerger;
+use DateTime;
+use Exception;
 use LynX39\LaraPdfMerger\PdfManage;
 use ProcessAndInvoice\Form\InvoicingForm;
 use ProcessAndInvoice\Model\PdfInvoice;
 use ProcessAndInvoice\Model\PdfInvoiceQuery;
 use ProcessAndInvoice\ProcessAndInvoice;
+use Propel\Runtime\Exception\PropelException;
+use Spipu\Html2Pdf\Exception\Html2PdfException;
 use Spipu\Html2Pdf\Html2Pdf;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Security\Core\User\User;
+use Symfony\Component\Routing\Annotation\Route;
 use Thelia\Controller\Admin\BaseAdminController;
-use Thelia\Core\Event\PdfEvent;
-use Thelia\Core\Event\TheliaEvents;
 use Thelia\Core\HttpFoundation\JsonResponse;
-use Thelia\Core\Template\Loop\Auth;
-use Thelia\Exception\TheliaProcessException;
-use Thelia\Log\Tlog;
-use Thelia\Model\ConfigQuery;
+use Thelia\Core\Security\SecurityContext;
+use Thelia\Core\Template\TemplateHelperInterface;
+use Thelia\Core\Translation\Translator;
 use Thelia\Model\Order;
-use Thelia\Model\OrderAddressQuery;
-use Thelia\Model\OrderProduct;
 use Thelia\Model\OrderProductQuery;
-use Thelia\Model\OrderProductTax;
 use Thelia\Model\OrderProductTaxQuery;
 use Thelia\Model\OrderQuery;
 use Thelia\Model\OrderStatusQuery;
-use Thelia\Tools\FileDownload\FileDownloader;
 use Thelia\Tools\URL;
 
+#[Route('/admin/module/ProcessAndInvoice', name: 'process_and_invoice_')]
 class ProcessAndInvoiceController extends BaseAdminController
 {
-    protected function returnHTMLInvoice($orderID, $fileName) {
-        $html = $this->renderRaw(
+    public function __construct(
+        protected SecurityContext $securityContext,
+        protected RequestStack $requestStack
+    )
+    {}
+
+    protected function returnHTMLInvoice($orderID, $fileName, TemplateHelperInterface $templateHelper)
+    {
+        return $this->renderRaw(
             $fileName,
             array(
                 'order_id' => $orderID
             ),
-            $this->getTemplateHelper()->getActivePdfTemplate()
+            $templateHelper->getActivePdfTemplate()
         );
-
-        return $html;
     }
 
-    protected function returnHTMLReport($fileName, $totalTurnover, $totalOrders) {
-        $html = $this->renderRaw(
+    protected function returnHTMLReport($fileName, $totalTurnover, $totalOrders, TemplateHelperInterface $templateHelper)
+    {
+        return $this->renderRaw(
             $fileName,
             array(
                 'total_turnover' => $totalTurnover,
                 'total_orders' => $totalOrders
             ),
-            $this->getTemplateHelper()->getActivePdfTemplate()
+            $templateHelper->getActivePdfTemplate()
         );
-
-        return $html;
     }
 
-    protected function getOrderTurnover(Order $order) {
+    /**
+     * @throws PropelException
+     */
+    protected function getOrderTurnover(Order $order): float|int|string|null
+    {
         $orderProducts = OrderProductQuery::create()
             ->filterByOrder($order)
             ->find()
@@ -79,24 +80,26 @@ class ProcessAndInvoiceController extends BaseAdminController
                 if ($orderProduct->getWasInPromo()) {
                     $turnover += $orderProduct->getQuantity() * ($orderProduct->getPromoPrice() + $orderTax->getPromoAmount());
                 } else {
-                    $turnover += $orderProduct->getQuantity() * ($orderProduct->getPrice() + $orderTax->getAmount());
+                    $turnover += $orderProduct->getQuantity() * ((float)$orderProduct->getPrice() + (float)$orderTax->getAmount());
                 }
             }
         }
 
-        $turnover += $order->getPostage() + $order->getPostageTax() - $order->getDiscount();
+        $turnover += (float)$order->getPostage() + (float)$order->getPostageTax() - (float)$order->getDiscount();
         return $turnover;
     }
 
     /**
      * Delete all files from the sever
      */
-    public function cleanFiles() {
+    #[Route('/clean', name: 'clean')]
+    public function cleanFiles(): JsonResponse
+    {
         $errorMessage = $this->checkDirectory();
 
         $finder = new Finder();
 
-        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $currentUserId = $this->securityContext->getAdminUser()->getId();
 
         if(is_dir(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId)) {
 
@@ -109,7 +112,7 @@ class ProcessAndInvoiceController extends BaseAdminController
 
         return new JsonResponse([
             "status" => $errorMessage ? 'error' : 'success',
-            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+            "message" => $errorMessage ?: Translator::getInstance()->trans(
                 'Report file correctly generated',
                 [],
                 ProcessAndInvoice::DOMAIN_NAME
@@ -120,13 +123,15 @@ class ProcessAndInvoiceController extends BaseAdminController
     /***
      * Generate the report file
      *
-     * @throws \Propel\Runtime\Exception\PropelException
-     * @throws \Spipu\Html2Pdf\Exception\Html2PdfException
+     * @throws PropelException
+     * @throws Html2PdfException
      */
-    public function createReport() {
+    #[Route('/report', name: 'report')]
+    public function createReport(TemplateHelperInterface $templateHelper): JsonResponse
+    {
         $errorMessage = null;
 
-        $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
+        $htmlToPdf = new Html2Pdf('P', 'A4', 'fr');
 
         $paidStatus = OrderStatusQuery::create()->findOneByCode('paid');
         $processingStatus = OrderStatusQuery::create()->findOneByCode('processing');
@@ -141,21 +146,22 @@ class ProcessAndInvoiceController extends BaseAdminController
             $totalTurnover += $this->getOrderTurnover($order);
         }
 
-        $rapport = $this->returnHTMLReport('InvoicesReport', round($totalTurnover, 2), count($orders));
-        $htmltopdf->writeHTML($rapport);
+        $rapport = $this->returnHTMLReport(
+            'InvoicesReport', round($totalTurnover, 2), count($orders), $templateHelper);
+        $htmlToPdf->writeHTML($rapport);
 
         /** Sets all @var Order $order to processing status */
         foreach ($orders as $order) {
             $order->setOrderStatus($processingStatus)->save();
         }
 
-        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $currentUserId = $this->securityContext->getAdminUser()->getId();
         $fileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/report.pdf';
-        $htmltopdf->output($fileName, 'F');
+        $htmlToPdf->output($fileName, 'F');
 
         return new JsonResponse([
             "status" => $errorMessage ? 'error' : 'success',
-            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+            "message" => $errorMessage ?: Translator::getInstance()->trans(
                 'Report file correctly generated',
                 [],
                 ProcessAndInvoice::DOMAIN_NAME
@@ -168,9 +174,14 @@ class ProcessAndInvoiceController extends BaseAdminController
      *
      * @return Response
      */
-    public function downloadFile() {
+    #[Route('/download', name: 'download')]
+    public function downloadFile(): Response
+    {
+        $pdf = "";
+        $fileName = "";
+
         $finder = new Finder();
-        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $currentUserId = $this->securityContext->getAdminUser()->getId();
         $finder->files()->in(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/merged');
 
         foreach ($finder as $mergedFile) {
@@ -185,13 +196,15 @@ class ProcessAndInvoiceController extends BaseAdminController
      * Merge the different invoices PDF in a single file, as well as the report
      *
      * @return JsonResponse
-     * @throws \Exception
+     * @throws Exception
      */
-    public function mergeInvoices() {
+    #[Route('/merge', name: 'merge')]
+    public function mergeInvoices(): JsonResponse
+    {
         $errorMessage = null;
 
         $finder = new Finder();
-        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $currentUserId = $this->securityContext->getAdminUser()->getId();
         $finder->files()->in(THELIA_LOCAL_DIR . 'invoices/' . $currentUserId);
 
         $mergedPdf = new PdfManage();
@@ -200,49 +213,51 @@ class ProcessAndInvoiceController extends BaseAdminController
         $reportFileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/report.pdf';
 
         $finder->sortByName();
+
         foreach ($finder as $invoiceFile) {
             if ($reportFileName !== $fileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . DS . $invoiceFile->getRelativePathname()) {
                 try {
                     $mergedPdf->addPDF($fileName);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $errorMessage = $e->getMessage();
                 }
             }
         }
 
-        /** Check if report exists to handle merging for MultiOrder process */
+        /** Check if a report exists to handle merging for MultiOrder process */
         if (file_exists($reportFileName)) {
             $mergedPdf->addPDF($reportFileName);
         }
 
-        $mergedFileName = 'invoices/' . $currentUserId . '/merged/' . 'ordersInvoice_' . (new \DateTime())->format("Y-m-d_H-i-s") . '.pdf';
+        $mergedFileName = 'invoices/' . $currentUserId . '/merged/' . 'ordersInvoice_' . (new DateTime())->format("Y-m-d_H-i-s") . '.pdf';
 
         try {
             $mergedPdf->merge();
-            $mergedPdf->save(THELIA_LOCAL_DIR . $mergedFileName, 'file');
-        } catch (\Exception $e) {
+            $mergedPdf->save(THELIA_LOCAL_DIR . $mergedFileName);
+        } catch (Exception $e) {
             $errorMessage = $e->getMessage();
         }
 
         return new JsonResponse([
             "status" => $errorMessage ? 'error' : 'success',
-            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+            "message" => $errorMessage ?: Translator::getInstance()->trans(
                 'Merging finished',
                 [],
                 ProcessAndInvoice::DOMAIN_NAME
             ),
-            "link" => URL::getInstance()->getBaseUrl() . '/admin/module/processandinvoice/download/',
+            "link" => URL::getInstance()->getBaseUrl() . '/admin/module/ProcessAndInvoice/download/',
         ], $errorMessage ? 500 : 200);
     }
 
     /**
      * Check if needed directories exist. Creates them otherwise
      */
-    protected function checkDirectory() {
-        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+    protected function checkDirectory(): ?string
+    {
+        $currentUserId = $this->securityContext->getAdminUser()->getId();
         $dir = new Filesystem();
 
-        /** Don't change construct : warnings will kill the ajax response */
+        /** Don't change construct: warnings will kill the ajax response */
         try {
             if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/')) {
                 $dir->mkdir($concurrentDirectory);
@@ -255,7 +270,7 @@ class ProcessAndInvoiceController extends BaseAdminController
             if (!is_dir($concurrentDirectory = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/merged')) {
                 $dir->mkdir($concurrentDirectory);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $e->getMessage();
         }
 
@@ -265,19 +280,22 @@ class ProcessAndInvoiceController extends BaseAdminController
     /**
      * Create the invoices for paid orders, 10 at a time
      *
+     * @param TemplateHelperInterface $templateHelper
      * @return Response|JsonResponse
-     * @throws \Propel\Runtime\Exception\PropelException
-     * @throws \Spipu\Html2Pdf\Exception\Html2PdfException
+     * @throws Html2PdfException
+     * @throws PropelException
      */
-    public function processAndInvoice() {
+    #[Route('', name: 'process_and_invoice', methods: 'POST')]
+    public function processAndInvoice(TemplateHelperInterface $templateHelper): JsonResponse|Response
+    {
         $errorMessage = $this->checkDirectory();
 
-        /** Make sure method was called by AJAX */
-        if(!$this->getRequest()->isXmlHttpRequest()) {
+        /** Make sure AJAX called the method */
+        if(!$this->requestStack->getCurrentRequest()->isXmlHttpRequest()) {
             return $this->generateRedirectFromRoute('admin.order.list');
         }
 
-        $request = $this->getRequest()->request;
+        $request = $this->requestStack->getCurrentRequest()->request;
 
         $turn = (int)$request->get('turn');
         $offset = 10 * $turn;
@@ -292,25 +310,25 @@ class ProcessAndInvoiceController extends BaseAdminController
         ;
 
         if ($orders->count() > 0) {
-            $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
+            $htmlToPdf = new Html2Pdf('P', 'A4', 'fr');
 
             $page = $offset;
             foreach ($orders as $order) {
                 ++$page;
-                $htmlInvoice = $this->returnHTMLInvoice($order->getId(), 'invoice');
-                $htmltopdf->writeHTML($htmlInvoice);
+                $htmlInvoice = $this->returnHTMLInvoice($order->getId(), 'invoice', $templateHelper);
+                $htmlToPdf->writeHTML($htmlInvoice);
             }
 
-            $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+            $currentUserId = $this->securityContext->getAdminUser()->getId();
 
             $fileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/ordersInvoice_' . $turn . '.pdf';
-            $htmltopdf->output($fileName, 'F');
+            $htmlToPdf->output($fileName, 'F');
         }
 
         /** JsonResponse for the AJAX call */
         return new JsonResponse([
             "status" => $errorMessage ? 'error' : 'success',
-            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+            "message" => $errorMessage ?: Translator::getInstance()->trans(
                 "Part $turn of invoice : Done",
                 [],
                 ProcessAndInvoice::DOMAIN_NAME
@@ -321,30 +339,33 @@ class ProcessAndInvoiceController extends BaseAdminController
     /**
      * Create the invoices for multi-order, 10 at a time
      *
+     * @param TemplateHelperInterface $templateHelper
      * @return Response|JsonResponse
-     * @throws \Propel\Runtime\Exception\PropelException
-     * @throws \Spipu\Html2Pdf\Exception\Html2PdfException
+     * @throws Html2PdfException
+     * @throws PropelException
      */
-    public function multiOrderProcess() {
+    #[Route('/multi-process', name: 'multi_process')]
+    public function multiOrderProcess(TemplateHelperInterface $templateHelper): JsonResponse|Response
+    {
         $errorMessage = $this->checkDirectory();
 
-        /** Make sure method was called by AJAX */
-        if(!$this->getRequest()->isXmlHttpRequest()) {
+        /** Make sure AJAX called the method */
+        if(!$this->requestStack->getCurrentRequest()->isXmlHttpRequest()) {
             return $this->generateRedirectFromRoute('admin.order.list');
         }
 
-        $request = $this->getRequest()->request;
+        $request = $this->requestStack->getCurrentRequest()->request;
 
         $turn = (int)$request->get('turn');
-        $orders = $request->get('orders');
+        $orders = (array)$request->get('orders');
         $offset = 10 * $turn;
         $limit = $offset + 10;
 
-        $htmltopdf = new Html2Pdf('P', 'A4', 'fr');
+        $htmlToPdf = new Html2Pdf('P', 'A4', 'fr');
 
         while ($offset < $limit && $offset < count($orders)) {
-            $htmlInvoice = $this->returnHTMLInvoice($orders[$offset], 'invoice');
-            $htmltopdf->writeHTML($htmlInvoice);
+            $htmlInvoice = $this->returnHTMLInvoice($orders[$offset], 'invoice', $templateHelper);
+            $htmlToPdf->writeHTML($htmlInvoice);
 
             $invoiced = PdfInvoiceQuery::create()->filterByOrderId($orders[$offset]);
             $invoiced
@@ -356,15 +377,15 @@ class ProcessAndInvoiceController extends BaseAdminController
             $offset++;
         }
 
-        $currentUserId = $this->getSecurityContext()->getAdminUser()->getId();
+        $currentUserId = $this->securityContext->getAdminUser()->getId();
 
         $fileName = THELIA_LOCAL_DIR . 'invoices/' . $currentUserId . '/ordersInvoice_' . $turn . '.pdf';
-        $htmltopdf->output($fileName, 'F');
+        $htmlToPdf->output($fileName, 'F');
 
         /** JsonResponse for the AJAX call */
         return new JsonResponse([
             "status" => $errorMessage ? 'error' : 'success',
-            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+            "message" => $errorMessage ?: Translator::getInstance()->trans(
                 "Part $turn of invoicing : Done",
                 [],
                 ProcessAndInvoice::DOMAIN_NAME
@@ -378,16 +399,17 @@ class ProcessAndInvoiceController extends BaseAdminController
      *
      * @return JsonResponse
      */
-    public function multiOrderToPdf() {
+    #[Route('/multi', name: 'multi')]
+    public function multiOrderToPdf(): JsonResponse
+    {
         $errorMessage = null;
 
-        $form = new InvoicingForm($this->getRequest());
+        $form = $this->createForm(InvoicingForm::getName());
 
+        $orderList = [];
+        $x = 0;
         try {
             $orderForm = $this->validateForm($form)->getData();
-            $orderList = [];
-
-            $x = 0;
 
             $statusArray = [];
             if ($orderForm['status_paid']) {
@@ -401,13 +423,13 @@ class ProcessAndInvoiceController extends BaseAdminController
             }
 
             if (empty($statusArray)) {
-                throw new \Exception('Veuillez sélectionner au moins un status de commande à traiter.');
+                throw new Exception('Veuillez sélectionner au moins un status de commande à traiter.');
             }
 
             if ($orderForm['order_day'] !== '' && $orderForm['order_day'] !== null) {
-                /** @var \DateTime $date */
+                /** @var DateTime $date */
                 $date = $orderForm['order_day']->format('Y-m-d') . '%';
-                $ordersFromDay = OrderQuery::create()->where('`order`.`created_at` LIKE \'' . $date . '\'')->find();
+                $ordersFromDay = OrderQuery::create()->where('`order`.`created_at` LIKE \'' . $date->format('Y-m-d') . '\'')->find();
 
                 foreach ($ordersFromDay as $order) {
                     if ($invoiced = PdfInvoiceQuery::create()->findOneByOrderId($order->getId())) {
@@ -423,12 +445,12 @@ class ProcessAndInvoiceController extends BaseAdminController
                 }
 
                 if(0 === count($orderList)) {
-                    throw new \Exception('Toutes les commandes ont été traitées pour cette journée avec ce(s) status de commande');
+                    throw new Exception('Toutes les commandes ont été traitées pour cette journée avec ce(s) status de commande');
                 }
 
             } else {
                 if(empty($selectedOrders = $orderForm['order_id'])) {
-                    throw new \Exception('Il faut sélectionner au moins une commande');
+                    throw new Exception('Il faut sélectionner au moins une commande');
                 }
 
                 foreach ($selectedOrders as $selectedOrder => $value) {
@@ -440,14 +462,14 @@ class ProcessAndInvoiceController extends BaseAdminController
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $errorMessage = $e->getMessage();
         }
 
         /** JsonResponse for the AJAX call */
         return new JsonResponse([
             "status" => $errorMessage ? 'error' : 'success',
-            "message" => $errorMessage ? $errorMessage : $this->getTranslator()->trans(
+            "message" => $errorMessage ?: Translator::getInstance()->trans(
                 "MultiPdf",
                 [],
                 ProcessAndInvoice::DOMAIN_NAME
@@ -461,9 +483,11 @@ class ProcessAndInvoiceController extends BaseAdminController
      * Set all orders as invoiced in table pdf_invoice
      *
      * @return RedirectResponse
-     * @throws \Propel\Runtime\Exception\PropelException
+     * @throws PropelException
      */
-    public function setAllOrdersInvoiced() {
+    #[Route('/set_all', name: 'set_all')]
+    public function setAllOrdersInvoiced(): RedirectResponse
+    {
         $orders = OrderQuery::create()->find();
 
         foreach ($orders as $order) {
@@ -480,7 +504,6 @@ class ProcessAndInvoiceController extends BaseAdminController
                 ->setInvoiced(1)
                 ->save()
                 ;
-
         }
 
         return new RedirectResponse(

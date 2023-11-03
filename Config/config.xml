@@ -4,14 +4,6 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://thelia.net/schema/dic/config http://thelia.net/schema/dic/config/thelia-1.0.xsd">
 
-    <forms>
-        <form name="processandinvoice.invoicing.pdf.form" class="ProcessAndInvoice\Form\InvoicingForm" />
-    </forms>
-
-    <loops>
-        <loop name="processandinvoice.invoice.pdf.order-loop" class="ProcessAndInvoice\Loop\InvoicePdfOrderLoop" />
-    </loops>
-
     <hooks>
         <hook id="processinvoice.hook.back">
             <tag name="hook.event_listener" event="orders.table-header" type="back" templates="render:orders_table_header.html" />
