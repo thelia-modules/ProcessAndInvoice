@@ -5,17 +5,22 @@
     <fullnamespace>ProcessAndInvoice\ProcessAndInvoice</fullnamespace>
     <descriptive locale="en_US">
         <title>Process and Invoice</title>
-        <description>Mass invoice generation</description>
+        <description>Prints the invoices of the paid orders with a report, then moves them to processing</description>
     </descriptive>
     <descriptive locale="fr_FR">
         <title>Traitement et Facture</title>
-        <description>Génération de factures en masse</description>
+        <description>Imprime les factures des commandes payées avec un récapitulatif, puis les passe en traitement</description>
+    </descriptive>
+    <descriptive locale="de_DE">
+        <title>Bearbeitung und Rechnung</title>
+        <description>Druckt die Rechnungen der bezahlten Bestellungen mit einer Übersicht und setzt sie dann auf „In Bearbeitung“</description>
     </descriptive>
     <languages>
         <language>en_US</language>
         <language>fr_FR</language>
+        <language>de_DE</language>
     </languages>
-    <version>2.0.0</version>
+    <version>3.0.0</version>
     <authors>
         <author>
             <name>Luc Normandon</name>
@@ -23,7 +28,7 @@
         </author>
     </authors>
     <type>classic</type>
-    <thelia>2.5.0</thelia>
+    <thelia>3.2.0</thelia>
     <stability>other</stability>
     <mandatory>0</mandatory>
     <hidden>0</hidden>

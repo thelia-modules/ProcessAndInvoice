@@ -1,0 +1,141 @@
+{# Rendered on the orders.top hook of the order list, no {% extends %} #}
+{% if is_granted('UPDATE', 'admin.order') %}
+    <div class="container-fluid mb-3" data-testid="process-and-invoice">
+        <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
+            <span class="small text-body-secondary" id="process-and-invoice-progress" role="status" aria-live="polite"></span>
+            <button type="button" class="btn btn-primary btn-sm" id="process-and-invoice-button"
+                    data-open-url="{{ path('process_and_invoice.batch.open') }}"
+                    data-step-url="{{ path('process_and_invoice.batch.step', {batchId: 0}) }}"
+                    data-complete-url="{{ path('process_and_invoice.batch.complete', {batchId: 0}) }}"
+                    data-close-url="{{ path('process_and_invoice.batch.close', {batchId: 0}) }}"
+                    data-token="{{ process_token }}">
+                <i class="bi bi-printer" aria-hidden="true"></i>
+                {{ 'Process paid orders'|trans({}, 'processandinvoice') }}
+            </button>
+        </div>
+        <div class="alert alert-warning mt-2 mb-0" id="process-and-invoice-failures" hidden>
+            <p class="mb-1">{{ 'These orders were left out, they keep their status:'|trans({}, 'processandinvoice') }}</p>
+            <ul class="mb-0"></ul>
+        </div>
+        <div class="alert alert-danger mt-2 mb-0" id="process-and-invoice-error" hidden>
+            <p class="mb-2" id="process-and-invoice-error-message"></p>
+            <button type="button" class="btn btn-outline-danger btn-sm" id="process-and-invoice-close" hidden>
+                {{ 'Close this batch, the orders not processed yet keep their status'|trans({}, 'processandinvoice') }}
+            </button>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const button = document.getElementById('process-and-invoice-button');
+            const progress = document.getElementById('process-and-invoice-progress');
+            const failureBox = document.getElementById('process-and-invoice-failures');
+            const errorBox = document.getElementById('process-and-invoice-error');
+            const errorMessage = document.getElementById('process-and-invoice-error-message');
+            const closeButton = document.getElementById('process-and-invoice-close');
+            const messages = {
+                progress: {{ '%done% / %total% orders processed'|trans({}, 'processandinvoice')|json_encode|raw }},
+                resumed: {{ 'Resuming the interrupted processing'|trans({}, 'processandinvoice')|json_encode|raw }},
+                merging: {{ 'Preparing the invoices document'|trans({}, 'processandinvoice')|json_encode|raw }},
+                done: {{ '%count% order(s) moved to processing'|trans({}, 'processandinvoice')|json_encode|raw }},
+                noDocument: {{ 'The invoices document could not be built.'|trans({}, 'processandinvoice')|json_encode|raw }},
+                unexpected: {{ 'An unexpected error occurred, the processing stopped. Click the button again to resume it.'|trans({}, 'processandinvoice')|json_encode|raw }},
+            };
+            let openBatchId = null;
+
+            // The URLs are rendered for batch 0, the real id is set once the batch is open.
+            const withBatch = (url) => url.replace('/batch/0/', '/batch/' + String(openBatchId) + '/');
+
+            const post = async (url) => {
+                const body = new FormData();
+                body.append('_token', button.dataset.token);
+                const response = await fetch(url, {method: 'POST', body, headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}});
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.message || messages.unexpected);
+                }
+                return payload;
+            };
+
+            const reset = () => {
+                errorBox.hidden = true;
+                closeButton.hidden = true;
+                failureBox.hidden = true;
+                failureBox.querySelector('ul').replaceChildren();
+            };
+
+            const showError = (error) => {
+                errorMessage.textContent = error.message;
+                closeButton.hidden = openBatchId === null;
+                errorBox.hidden = false;
+            };
+
+            const finish = (result) => {
+                openBatchId = null;
+                progress.textContent = messages.done.replace('%count%', String(result.processedCount));
+                const list = failureBox.querySelector('ul');
+                result.failures.forEach((failure) => {
+                    const item = document.createElement('li');
+                    item.textContent = failure.reference + ' : ' + failure.reason;
+                    list.appendChild(item);
+                });
+                failureBox.hidden = list.children.length === 0;
+                if (result.downloadUrl) {
+                    window.location.assign(result.downloadUrl);
+                } else {
+                    showError(new Error(messages.noDocument));
+                }
+            };
+
+            button.addEventListener('click', async () => {
+                button.disabled = true;
+                reset();
+
+                try {
+                    const batch = await post(button.dataset.openUrl);
+                    if (batch.nothingToProcess) {
+                        progress.textContent = batch.message;
+                        return;
+                    }
+
+                    openBatchId = batch.batchId;
+                    const total = batch.orderCount;
+                    let pending = batch.pendingCount;
+                    const show = () => {
+                        progress.textContent = (batch.resumed ? messages.resumed + '. ' : '')
+                            + messages.progress.replace('%done%', String(total - pending)).replace('%total%', String(total));
+                    };
+                    show();
+
+                    while (pending > 0) {
+                        const step = await post(withBatch(button.dataset.stepUrl));
+                        pending = step.pendingCount;
+                        show();
+                    }
+
+                    progress.textContent = messages.merging;
+                    finish(await post(withBatch(button.dataset.completeUrl)));
+                } catch (error) {
+                    showError(error);
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            closeButton.addEventListener('click', async () => {
+                closeButton.disabled = true;
+                button.disabled = true;
+                reset();
+
+                try {
+                    finish(await post(withBatch(button.dataset.closeUrl)));
+                } catch (error) {
+                    showError(error);
+                } finally {
+                    closeButton.disabled = false;
+                    button.disabled = false;
+                }
+            });
+        })();
+    </script>
+{% endif %}

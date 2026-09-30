@@ -1,0 +1,67 @@
+{# Report of a ProcessAndInvoice batch, printed after the invoices of its orders.
+   Variables: orders (list of ProcessAndInvoice\Service\ReportRow), total_turnover, total_orders. #}
+<style>
+{% verbatim %}
+    @page { margin: 10mm; }
+
+    p { font-size: 12px; }
+    td, th { font-size: 8px; padding: 1mm; }
+    table { border-collapse: collapse; width: 100%; }
+
+    .align-left { text-align: left; }
+    .align-right { text-align: right; }
+
+    .orders th { text-align: left; }
+    .orders { margin-bottom: 5mm; }
+
+    .totals { width: 50%; }
+    .totals th, .totals td { border: solid 1px #3a3b3c; text-align: center; vertical-align: middle; }
+{% endverbatim %}
+</style>
+
+<p><b class="align-left">{{ 'Report'|trans({}, 'processandinvoice') }}</b></p>
+
+<table class="orders">
+    <colgroup>
+        <col style="width: 10%;">
+        <col style="width: 20%;">
+        <col style="width: 20%;">
+        <col style="width: 35%;">
+        <col style="width: 15%;">
+    </colgroup>
+    <thead>
+        <tr>
+            <th>{{ 'ID'|trans({}, 'processandinvoice') }}</th>
+            <th>{{ 'Reference'|trans({}, 'processandinvoice') }}</th>
+            <th>{{ 'Date'|trans({}, 'processandinvoice') }}</th>
+            <th>{{ 'Customer name'|trans({}, 'processandinvoice') }}</th>
+            <th class="align-right">{{ 'Amount'|trans({}, 'processandinvoice') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for order in orders %}
+            <tr>
+                <td>{{ order.orderId }}</td>
+                <td>{{ order.reference }}</td>
+                <td>{{ format_date(order.createdAt, 'date') }}</td>
+                <td>{{ order.customerName }}</td>
+                <td class="align-right">{{ order.totalAmount|number_format(2, '.', '') }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<table class="totals">
+    <thead>
+        <tr>
+            <th>{{ 'Total turnover'|trans({}, 'processandinvoice') }}</th>
+            <th>{{ 'Processed orders'|trans({}, 'processandinvoice') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ total_turnover }}</td>
+            <td>{{ total_orders }}</td>
+        </tr>
+    </tbody>
+</table>
