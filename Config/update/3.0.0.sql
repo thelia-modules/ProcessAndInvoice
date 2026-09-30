@@ -1,5 +1,5 @@
--- ProcessAndInvoice installation script, played by ProcessAndInvoice::postActivation().
--- It never drops anything: existing tables and rows are kept as they are.
+-- ProcessAndInvoice 3.0.0 update: the batch tables of the Thelia 3 processing.
+-- The pdf_invoice table of the 2.x line is left in place, untouched: nothing reads it anymore.
 
 SET FOREIGN_KEY_CHECKS = 0;
 

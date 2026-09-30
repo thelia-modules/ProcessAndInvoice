@@ -1,12 +1,26 @@
 {
   "name": "thelia/process-and-invoice-module",
+  "description": "Prints the invoices of every paid order with a report, then moves these orders to the processing status",
   "license": "LGPL-3.0-or-later",
   "type": "thelia-module",
   "require": {
-    "thelia/installer": "~1.1",
-    "daltcore/lara-pdf-merger": "^2.0"
+    "php": ">=8.3",
+    "ext-dom": "*",
+    "psr/log": "^3.0",
+    "setasign/fpdf": "^1.8",
+    "setasign/fpdi": "^2.6",
+    "thelia/installer": "^1.6"
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-latest",
+    "phpunit/phpunit": "^11.5"
   },
   "extra": {
     "installer-name": "ProcessAndInvoice"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ProcessAndInvoice\\Tests\\": "Tests/"
+    }
   }
 }
