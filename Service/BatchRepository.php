@@ -111,9 +111,9 @@ final readonly class BatchRepository
      */
     public function lockOrderStatus(int $orderId): ?int
     {
-        $statusId = $this->fetchColumn('SELECT status_id FROM `order` WHERE id = :id FOR UPDATE', ['id' => $orderId]);
+        $row = $this->fetchRow('SELECT status_id FROM `order` WHERE id = :id FOR UPDATE', ['id' => $orderId]);
 
-        return false === $statusId || null === $statusId ? null : (int) $statusId;
+        return null === $row || null === $row[0] ? null : (int) $row[0];
     }
 
     /**
@@ -123,7 +123,7 @@ final readonly class BatchRepository
      */
     public function reserve(int $batchId, int $orderId): bool
     {
-        return false !== $this->fetchColumn(
+        return null !== $this->fetchRow(
             'SELECT id FROM process_and_invoice_batch_order
              WHERE batch_id = :batch_id AND order_id = :order_id AND processed_at IS NULL AND failure IS NULL
              FOR UPDATE',
@@ -255,6 +255,25 @@ final readonly class BatchRepository
     }
 
     /**
+     * The first row as a list, or null when the query returns none. The statement of a Propel
+     * connection answers an empty string, not false, to fetchColumn() when there is no row: only
+     * fetch() tells a missing row from an empty value.
+     *
+     * @param array<string, int|string|null> $parameters
+     *
+     * @return list<mixed>|null
+     */
+    private function fetchRow(string $sql, array $parameters): ?array
+    {
+        $row = $this->execute($sql, $parameters)->fetch(\PDO::FETCH_NUM);
+
+        return \is_array($row) ? array_values($row) : null;
+    }
+
+    /**
+     * For a query that always returns one row (COUNT, or a column of a row known to exist): the value is
+     * cast by the caller, never compared to false.
+     *
      * @param array<string, int|string|null> $parameters
      */
     private function fetchColumn(string $sql, array $parameters): mixed
